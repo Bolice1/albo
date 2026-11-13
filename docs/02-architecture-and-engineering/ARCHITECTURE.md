@@ -47,16 +47,16 @@ The browser communicates with the core API. The core API validates the request, 
 
 ## 4. Component responsibilities
 
-| Component | Owns | Must not own |
-|---|---|---|
-| Web client | Presentation, navigation, form state, accessibility, user-facing error handling | Secrets, authorization decisions, trusted risk calculations |
-| Core API | Public API, identity integration, authorization, consent, workflows, persistence, audit | Hidden model reasoning, direct browser access to sensitive providers |
-| AI service | Data preparation, rules, analytics, model adapters, model/rule metadata | User identity, consent decisions, unrestricted record access |
-| PostgreSQL/PostGIS | Durable relational data, constraints, transactions, approved spatial data | Application secrets or unbounded raw model prompts |
-| Redis/job workers | Cache, rate limiting, bounded queues, asynchronous coordination | Primary health-record storage |
-| External adapters | Provider-specific authentication, mapping, normalization, retries, timeouts | Core business rules or direct authorization decisions |
-| Object storage | Approved reports or documents with controlled access | Public storage of sensitive records by default |
-| Observability | Health, performance, errors, and traces with redaction | Raw health records, credentials, tokens, or unrestricted prompts |
+| Component          | Owns                                                                                    | Must not own                                                         |
+| ------------------ | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Web client         | Presentation, navigation, form state, accessibility, user-facing error handling         | Secrets, authorization decisions, trusted risk calculations          |
+| Core API           | Public API, identity integration, authorization, consent, workflows, persistence, audit | Hidden model reasoning, direct browser access to sensitive providers |
+| AI service         | Data preparation, rules, analytics, model adapters, model/rule metadata                 | User identity, consent decisions, unrestricted record access         |
+| PostgreSQL/PostGIS | Durable relational data, constraints, transactions, approved spatial data               | Application secrets or unbounded raw model prompts                   |
+| Redis/job workers  | Cache, rate limiting, bounded queues, asynchronous coordination                         | Primary health-record storage                                        |
+| External adapters  | Provider-specific authentication, mapping, normalization, retries, timeouts             | Core business rules or direct authorization decisions                |
+| Object storage     | Approved reports or documents with controlled access                                    | Public storage of sensitive records by default                       |
+| Observability      | Health, performance, errors, and traces with redaction                                  | Raw health records, credentials, tokens, or unrestricted prompts     |
 
 ## 5. Core API module boundaries
 
@@ -171,7 +171,7 @@ External data is not automatically clinical evidence. Each source requires a pur
 Keep short, bounded requests synchronous when the user needs an immediate response. Use background jobs for:
 
 - Report generation
-- Environmental-data ingestion
+- Environmental data ingestion
 - Notification delivery and retries
 - Long-running or expensive analytics
 - Model evaluation and batch processing
