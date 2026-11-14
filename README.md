@@ -8,6 +8,7 @@ Albo is currently in the documentation and architecture foundation phase.
 
 ## Start here
 
+- [Project documentation status](docs/PROJECT_STATUS.md)
 - [Project overview](docs/01-project-foundation/PROJECT_OVERVIEW.md)
 - [Project requirements](docs/01-project-foundation/REQUIREMENTS.md)
 - [Project scope](docs/01-project-foundation/PROJECT_SCOPE.md)
