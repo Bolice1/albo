@@ -2,6 +2,8 @@
 
 This directory is the shared project context for the team and AI coding agents. The proposal is the product source; these files translate it into reviewable engineering contracts.
 
+Read the [project documentation status](PROJECT_STATUS.md) for the current completion report.
+
 ## Initial ownership
 
 | Area | Initial owner |
