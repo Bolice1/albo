@@ -247,20 +247,54 @@ All four `03-security-and-privacy/` documents are now drafted and ready for revi
 
 All five `04-artificial-intelligence/` documents are now drafted and ready for review.
 
-## 6. Collaborator-owned documentation
+## 6. Development standards drafted
 
-The following documentation areas remain empty for collaborators:
+### CODING_STANDARDS.md (proposed draft, 2026-11-19)
 
-- `05-development-standards/`
+- Universal engineering rules and strict boundary separation (`frontend/` vs. `backend/` vs. `ai-services/`)
+- Repository layout and naming conventions across TypeScript/NestJS, Next.js/React, Python/FastAPI, and PostgreSQL
+- Server-side token identity derivation, centralized policy guards, and DTO allowlist validation
+- Pure, wall-clock-independent scoring functions and Pydantic v2 validation error redaction
+- Non-diagnostic UI prop enforcement, structured logging allowlist, linting/static analysis, and PR review checklist
+
+### TESTING_STRATEGY.md (proposed draft, 2026-11-19)
+
+- 4-layer testing pyramid (Jest/Pytest unit, Supertest + Test DB integration, `ai-services/evaluation/` safety suites, Playwright + axe-core E2E)
+- Mandatory authentication, horizontal IDOR (`404 NOT_FOUND`), role isolation, provider assignment, and consent-withdrawal test matrix
+- Database migration, transaction atomicity, and audit-redaction tests
+- Risk reproducibility, `limited`-status degradation, crisis escalation recall (100%), and prompt-injection evaluation requirements
+- Synthetic test-data governance and 8-step first vertical-slice acceptance test plan
+
+### DEPLOYMENT.md (proposed draft, 2026-11-19)
+
+- Docker packaging baseline and public-edge vs. private-network runtime topology
+- Strict 4-environment isolation rule (`development`, `test`, `staging`, `production` — zero production data outside production)
+- Startup config validation, secret management, and runtime AI safety kill switches / version pinning
+- Multi-stage non-root Dockerfile standards, 6-stage CI/CD pipeline, and expand-and-contract database migrations
+- Health checks, redacted OpenTelemetry observability, backup/restore drills, rollback procedures, and Rwanda Law N° 058/2021 pre-production readiness checklist
+
+### CONTRIBUTING.md (proposed draft, 2026-11-19)
+
+- Pre-implementation reading requirements and scope/decision verification workflow
+- Branching, commit, and documentation-synchronization rules
+- Non-negotiable safety and privacy rules for human developers and AI coding agents
+- Tiered review requirements (including dual review for security/auth and clinical sign-off for risk/assistant rules) and PR checklist
+
+All four `05-development-standards/` documents are now drafted and ready for review.
+
+## 7. Collaborator-owned documentation
+
+The following documentation area remains empty:
+
 - `06-technical-decisions/`
 
-## 7. Current overall status
+## 8. Current overall status
 
 The project foundation and architecture/engineering documentation are complete as proposed drafts. They are ready for team review, clarification, and approval before implementation.
 
 No application code has been implemented yet.
 
-## 8. Main decisions still requiring approval
+## 9. Main decisions still requiring approval
 
 - First-release geography, language, users, and risk use cases
 - Identity provider and authentication boundary
@@ -271,7 +305,7 @@ No application code has been implemented yet.
 - First vertical slice to implement
 - Hosting, budget, operational ownership, and recovery targets
 
-## 9. Recommended next step
+## 10. Recommended next step
 
 Review and approve the first vertical slice before implementation:
 
