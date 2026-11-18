@@ -151,22 +151,69 @@
 - [AGENTS.md](../AGENTS.md) — AI coding-agent instructions
 - [Documentation map](README.md) — documentation structure and ownership
 
-## 4. Collaborator-owned documentation
+## 4. Security and privacy drafted
 
-The following documentation areas intentionally remain empty for collaborators:
+### ACCESS_CONTROL.md (proposed draft, 2026-11-18)
 
-- `03-security-and-privacy/`
+- Access-control principles and deny-by-default decision model
+- Candidate roles and service identities
+- Proposed permission matrix
+- Assignment- and organization-scoped access
+- Consent- and purpose-aware access, including proposed withdrawal effects
+- Administrative access, separation of duties, and break-glass position
+- Enforcement points, location and report access
+- Access auditing, lifecycle, and authorization test matrix
+- Open decisions and documentation discrepancies to resolve
+
+### SECURITY.md (proposed draft, 2026-11-18)
+
+- Security objectives, principles, and trust boundaries
+- Authentication and data protection in transit and at rest
+- Secrets management
+- Application, AI-service, and integration security
+- Infrastructure and environment separation
+- Logging, monitoring, and audit rules
+- Secure development lifecycle and vulnerability management
+- Proposed incident-response outline, backup and recovery
+- First-release security baseline and open decisions
+
+### DATA_PRIVACY.md (proposed draft, 2026-11-18)
+
+- Privacy principles
+- Rwanda Law N° 058/2021 context (to validate with legal counsel)
+- Roles, data inventory, purposes, and lawful basis
+- Consent management and withdrawal
+- Retention and deletion approach (periods not yet approved)
+- Data subject rights and automated-processing safeguards
+- Children, sharing, data residency, and cross-border transfers
+- Privacy impact assessment, breach handling, and first-release baseline
+
+### THREAT_MODEL.md (proposed draft, 2026-11-18)
+
+- Assets, threat actors, trust boundaries, and entry points
+- Proposed likelihood × impact rating method
+- STRIDE threats per boundary (T-001 to T-033)
+- Health, privacy, and AI abuse cases (T-034 to T-047)
+- First-release priority risks and required evidence
+- Assumptions, residual risks, and maintenance rules
+
+All four `03-security-and-privacy/` documents are now drafted and ready for review.
+
+## 5. Collaborator-owned documentation
+
+The following documentation areas remain empty for collaborators:
+
 - `04-artificial-intelligence/`
 - `05-development-standards/`
 - `06-technical-decisions/`
 
-## 5. Current overall status
+## 6. Current overall status
 
 The project foundation and architecture/engineering documentation are complete as proposed drafts. They are ready for team review, clarification, and approval before implementation.
 
 No application code has been implemented yet.
 
-## 6. Main decisions still requiring approval
+## 7. Main decisions still requiring approval
 
 - First-release geography, language, users, and risk use cases
 - Identity provider and authentication boundary
@@ -177,7 +224,7 @@ No application code has been implemented yet.
 - First vertical slice to implement
 - Hosting, budget, operational ownership, and recovery targets
 
-## 7. Recommended next step
+## 8. Recommended next step
 
 Review and approve the first vertical slice before implementation:
 
