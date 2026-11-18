@@ -151,7 +151,7 @@
 - [AGENTS.md](../AGENTS.md) — AI coding-agent instructions
 - [Documentation map](README.md) — documentation structure and ownership
 
-## 4. Security and privacy in progress
+## 4. Security and privacy drafted
 
 ### ACCESS_CONTROL.md (proposed draft, 2026-11-18)
 
@@ -188,7 +188,16 @@
 - Children, sharing, data residency, and cross-border transfers
 - Privacy impact assessment, breach handling, and first-release baseline
 
-Remaining in `03-security-and-privacy/`: `THREAT_MODEL.md`.
+### THREAT_MODEL.md (proposed draft, 2026-11-18)
+
+- Assets, threat actors, trust boundaries, and entry points
+- Proposed likelihood × impact rating method
+- STRIDE threats per boundary (T-001 to T-033)
+- Health, privacy, and AI abuse cases (T-034 to T-047)
+- First-release priority risks and required evidence
+- Assumptions, residual risks, and maintenance rules
+
+All four `03-security-and-privacy/` documents are now drafted and ready for review.
 
 ## 5. Collaborator-owned documentation
 
