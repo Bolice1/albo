@@ -1,8 +1,8 @@
 # Albo project documentation status
 
-**Date:** 2026-11-14  
-**Status:** Documentation foundation and architecture/engineering draft completed  
-**Implementation status:** Application code has not started
+**Date:** 2026-11-19  
+**Status:** All six documentation areas (`01` through `06`) completed as proposed drafts  
+**Implementation status:** Application code has not started (ready for first vertical-slice approval and implementation)
 
 ## 1. Project foundation completed
 
@@ -282,15 +282,32 @@ All five `04-artificial-intelligence/` documents are now drafted and ready for r
 
 All four `05-development-standards/` documents are now drafted and ready for review.
 
-## 7. Collaborator-owned documentation
+## 7. Technical decisions drafted
 
-The following documentation area remains empty:
+### DECISIONS.md (proposed draft, 2026-11-19)
 
-- `06-technical-decisions/`
+- Decision governance rules and ADR lifecycle (`Accepted (Baseline)`, `Proposed`, `Open / To Decide`, `Superseded`)
+- Baseline and proposed Architecture Decision Records (`ADR-001` through `ADR-009`):
+  - `ADR-001`: NestJS modular monolith + separate internal Python/FastAPI AI service
+  - `ADR-002`: Deterministic rules and weighted scoring first; no proprietary LLM training
+  - `ADR-003`: Non-diagnostic framing and `status: "limited"` (`level: null`) degradation on missing/stale inputs
+  - `ADR-004`: Deny-by-default, relationship- and consent-aware access control (`404 NOT_FOUND` on cross-user access; no automatic admin health-record access)
+  - `ADR-005`: Standards-based external identity provider with isolated application accounts
+  - `ADR-006`: Deterministic emergency, severe-symptom, and self-harm escalation (`FR-024`)
+  - `ADR-007`: 100% synthetic data outside production and zero sensitive-payload logging
+  - `ADR-008`: PostgreSQL/PostGIS durable store, Redis/BullMQ for jobs only, and Docker packaging without initial Kubernetes
+  - `ADR-009`: Single citizen vertical slice as the first implementation target
+- Consolidated master register of open decisions (`OPEN-001` through `OPEN-012`) mapped to blocking milestones
+
+### CHANGELOG.md (proposed draft, 2026-11-19)
+
+- Chronological record of all repository milestones from initialization (2026-11-11) through project foundation and architecture (2026-11-14), security and privacy (2026-11-18), and artificial intelligence, development standards, and technical decisions (2026-11-19)
+
+All two `06-technical-decisions/` documents are now drafted and ready for review.
 
 ## 8. Current overall status
 
-The project foundation and architecture/engineering documentation are complete as proposed drafts. They are ready for team review, clarification, and approval before implementation.
+All 26 domain documentation files across `01-project-foundation/`, `02-architecture-and-engineering/`, `03-security-and-privacy/`, `04-artificial-intelligence/`, `05-development-standards/`, and `06-technical-decisions/` (plus `README.md`, `AGENTS.md`, `docs/README.md`, and `docs/PROJECT_STATUS.md`) are now complete as coherent, cross-referenced proposed drafts derived from `Albo_Project_Proposal.docx`.
 
 No application code has been implemented yet.
 
