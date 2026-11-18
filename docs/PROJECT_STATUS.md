@@ -177,7 +177,18 @@
 - Proposed incident-response outline, backup and recovery
 - First-release security baseline and open decisions
 
-Remaining in `03-security-and-privacy/`: `DATA_PRIVACY.md`, `THREAT_MODEL.md`.
+### DATA_PRIVACY.md (proposed draft, 2026-11-18)
+
+- Privacy principles
+- Rwanda Law N° 058/2021 context (to validate with legal counsel)
+- Roles, data inventory, purposes, and lawful basis
+- Consent management and withdrawal
+- Retention and deletion approach (periods not yet approved)
+- Data subject rights and automated-processing safeguards
+- Children, sharing, data residency, and cross-border transfers
+- Privacy impact assessment, breach handling, and first-release baseline
+
+Remaining in `03-security-and-privacy/`: `THREAT_MODEL.md`.
 
 ## 5. Collaborator-owned documentation
 
