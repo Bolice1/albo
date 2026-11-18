@@ -165,7 +165,19 @@
 - Access auditing, lifecycle, and authorization test matrix
 - Open decisions and documentation discrepancies to resolve
 
-Remaining in `03-security-and-privacy/`: `SECURITY.md`, `DATA_PRIVACY.md`, `THREAT_MODEL.md`.
+### SECURITY.md (proposed draft, 2026-11-18)
+
+- Security objectives, principles, and trust boundaries
+- Authentication and data protection in transit and at rest
+- Secrets management
+- Application, AI-service, and integration security
+- Infrastructure and environment separation
+- Logging, monitoring, and audit rules
+- Secure development lifecycle and vulnerability management
+- Proposed incident-response outline, backup and recovery
+- First-release security baseline and open decisions
+
+Remaining in `03-security-and-privacy/`: `DATA_PRIVACY.md`, `THREAT_MODEL.md`.
 
 ## 5. Collaborator-owned documentation
 
