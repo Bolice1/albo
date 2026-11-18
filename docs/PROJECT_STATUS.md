@@ -199,21 +199,68 @@
 
 All four `03-security-and-privacy/` documents are now drafted and ready for review.
 
-## 5. Collaborator-owned documentation
+## 5. Artificial intelligence drafted
+
+### AI_ARCHITECTURE.md (proposed draft, 2026-11-18)
+
+- Core AI architectural principles and strict core-API vs. AI-service ownership split
+- Internal `ai-services/` FastAPI package layout (`contracts`, `data_processing`, `risk_engine`, `model_adapters`, `safety`, `evaluation`)
+- Phased evolution gates: Phase 1 deterministic rules, Phase 2 safety-gated assistant, Phase 3 validated ML models
+- Internal service-to-service API contract and PII-free input snapshot schema
+- Synchronous vs. asynchronous execution, stateless versioning, and failure/degraded-mode behavior
+- Redacted observability, first-release scope, and open decisions
+
+### RISK_SCORING.md (proposed draft, 2026-11-19)
+
+- Preventive indicator vs. medical diagnosis boundary and core scoring principles
+- Candidate proposal risk domains and first-release gating
+- 8-step risk-assessment evaluation pipeline
+- Declarative rule-set specification standard (inputs, freshness windows, thresholds, bounded weights, floor guardrails)
+- Proposed risk-level vocabulary (`low`, `moderate`, `high`, plus `limited` and `failed` statuses)
+- Contributing-factor structure, mandatory limitations, and non-prescriptive next steps
+- Reproducibility, clinical review workflow, synthetic test matrix, and future ML transition gates
+
+### AI_ASSISTANT.md (proposed draft, 2026-11-19)
+
+- Safety-gated (`Should`) status and informational/navigation boundary
+- Explicit permitted vs. prohibited assistant capabilities
+- 5-step conversation pipeline with pre-model crisis screening and post-model output safety filters
+- Caller-scoped context assembly and PII exclusion rules
+- Grounding and hallucination prevention (verified facility cards injected by core API, never generated from model weights)
+- Deterministic emergency, severe-symptom, and self-harm escalation flow (FR-024)
+- Prompt-injection defenses and staged implementation options (in-house template/retrieval vs. gated external LLM)
+
+### MODEL_DOCUMENTATION.md (proposed draft, 2026-11-19)
+
+- Governance contract and immutable version lifecycle (`draft` → `under_review` → `approved`/`active` → `retired`)
+- Standardized 7-part Rule / Model Card template (AI-001, DATABASE_SCHEMA §8.2)
+- Additional Phase 3 ML validation gates (representativeness, baseline comparison, calibration, subgroup fairness, drift monitoring, rollback)
+- Initial candidate catalog across Phases 1–3 and draft card placeholder for the first vertical-slice indicator
+
+### AI_SAFETY.md (proposed draft, 2026-11-19)
+
+- Non-negotiable AI safety invariants (non-diagnostic, no false low-risk fallback, deterministic crisis escalation, provenance, minimum data)
+- Hazard taxonomy (`HAZ-01` to `HAZ-09`) mapped to technical and product guardrails
+- Two-category emergency and self-harm escalation protocol (FR-024)
+- 7-suite pre-release AI safety evaluation matrix for CI (`ai-services/evaluation/`)
+- Runtime circuit breakers (kill switches), version rollback, and clinical/safety incident response
+
+All five `04-artificial-intelligence/` documents are now drafted and ready for review.
+
+## 6. Collaborator-owned documentation
 
 The following documentation areas remain empty for collaborators:
 
-- `04-artificial-intelligence/`
 - `05-development-standards/`
 - `06-technical-decisions/`
 
-## 6. Current overall status
+## 7. Current overall status
 
 The project foundation and architecture/engineering documentation are complete as proposed drafts. They are ready for team review, clarification, and approval before implementation.
 
 No application code has been implemented yet.
 
-## 7. Main decisions still requiring approval
+## 8. Main decisions still requiring approval
 
 - First-release geography, language, users, and risk use cases
 - Identity provider and authentication boundary
@@ -224,7 +271,7 @@ No application code has been implemented yet.
 - First vertical slice to implement
 - Hosting, budget, operational ownership, and recovery targets
 
-## 8. Recommended next step
+## 9. Recommended next step
 
 Review and approve the first vertical slice before implementation:
 
