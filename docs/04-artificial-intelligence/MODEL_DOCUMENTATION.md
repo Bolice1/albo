@@ -113,7 +113,7 @@ No rule or model version is approved for production yet. The table below registe
 
 | Code | Candidate version | Implementation type | Target phase | Current status | Notes |
 |---|---|---|---|---|---|
-| `lifestyle_ncd_preventive` | `rules-v0.1.0-draft` | `rule` / `weighted_score` | First vertical slice (Phase 1) | `draft` | Candidate self-contained preventive lifestyle indicator; awaits field allowlist and clinical reviewer sign-off |
+| `lifestyle_ncd_preventive` | `rules-v1.0.0` | `weighted_score` | First vertical slice (Phase 1) | `under_review` (Slice 1 baseline per `ADR-010`) | Self-contained preventive lifestyle indicator approved for first vertical-slice implementation |
 | `malaria_exposure_preventive` | `rules-v0.1.0-draft` | `weighted_score` | First release / early expansion | `draft` | Combines regional rainfall/temperature exposure with self-reported preventive habits; awaits Rwanda weather source selection |
 | `respiratory_air_quality_preventive` | `rules-v0.1.0-draft` | `weighted_score` | First release / early expansion | `draft` | Combines regional air-quality observation with exposure habits; awaits air-quality provider selection |
 | `water_hygiene_preventive` | `rules-v0.1.0-draft` | `rule` | Early expansion | `draft` | Preventive waterborne/hygiene exposure indicator; awaits public-health reviewer sign-off |
@@ -121,17 +121,65 @@ No rule or model version is approved for production yet. The table below registe
 | `preventive_assistant` | `assistant-v0.1.0-draft` | `assistant_adapter` | Phase 2 (`Should`, safety-gated) | `draft` | Bounded explanation and preventive Q&A adapter; gated on FR-024 escalation and provider privacy review |
 | `ml_risk_predictor_*` | `unscheduled` | `ml_model` | Phase 3 (`Later`) | `not_started` | Postponed until structured data, clinical validation, and AI-006 governance gates are satisfied |
 
-### 6.1 Draft card placeholder: First vertical-slice candidate (`lifestyle_ncd_preventive` — `rules-v0.1.0-draft`)
+### 6.1 Rule card: First vertical-slice baseline (`lifestyle_ncd_preventive` — `rules-v1.0.0`)
 
 - **Name:** Preventive lifestyle and NCD risk-factor awareness indicator
 - **Implementation type:** `weighted_score` with floor guardrails
-- **Owner:** AI/backend owner + clinical reviewer (`To assign`)
-- **Approval status:** `draft` (not approved for clinical or production use)
-- **Intended use:** Summarize self-reported modifiable lifestyle factors (such as physical activity, tobacco/alcohol habits, sleep/stress check-in, and dietary pattern inputs approved for the first vertical slice) into a non-diagnostic preventive indicator (`low`, `moderate`, `high`, or `limited`).
-- **Excluded uses:** Not a cardiovascular, diabetes, or cancer diagnosis; does not estimate 10-year clinical event probability (e.g., Framingham/WHO clinical risk charts requiring lab blood tests) unless clinical inputs and validation are explicitly approved.
-- **Inputs:** Exact field codes and freshness windows (`max_age_hours`) pending team decision in [DATABASE_SCHEMA.md](../02-architecture-and-engineering/DATABASE_SCHEMA.md) §18 and [RISK_SCORING.md](RISK_SCORING.md) §13.
-- **Outputs:** Discrete level (`low`, `moderate`, `high`, or `null` when `limited`), top contributing factors, mandatory non-diagnostic limitation statement, and approved preventive lifestyle next steps.
-- **Rollback target:** Disable use case (return `status: "limited"` with unavailable notice).
+- **Owner:** AI/backend engineering owner + clinical reviewer (`OPEN-006` before production clinical release)
+- **Approval status:** `under_review` — approved for First Vertical Slice implementation on synthetic data per [ADR-010](../06-technical-decisions/DECISIONS.md)
+- **Decision record:** `ADR-010`, `ADR-013`, `ADR-014` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md)
+- **Effective from / Retired at:** `2026-11-19` (synthetic vertical-slice baseline)
+
+#### 1. Intended use and users
+- **Purpose:** Summarize self-reported modifiable lifestyle factors associated with non-communicable disease prevention into a non-diagnostic preventive indicator (`low`, `moderate`, `high`, or `null` when `limited`).
+- **Intended users:** Authenticated adult citizens (`18+`) in Rwanda.
+- **Allowed decision scope:** Personal preventive awareness, lifestyle reflection, and suggesting a preventive check-up when multiple factors are elevated.
+
+#### 2. Excluded and prohibited uses
+- Not a medical diagnosis of cardiovascular disease, diabetes, cancer, or chronic respiratory disease.
+- Does not estimate 10-year clinical event probability and must never be used to prescribe medication, deny care, or replace a clinician's judgment.
+
+#### 3. Inputs and data provenance
+- **Required inputs (`max_age_hours: 720` / 30 days, `allowed_sources: ["self_reported"]`):**
+  - `physical_activity_minutes_per_week`: integer in `[0, 5040]`, unit `min/week`
+  - `tobacco_use_status`: enum in `["never", "former", "current"]`
+- **Optional inputs (`max_age_hours: 720` / 30 days, `allowed_sources: ["self_reported"]`):**
+  - `sleep_hours_avg`: float/integer in `[0, 24]`, unit `hours/day`
+  - `diet_fruit_veg_servings_per_day`: integer in `[0, 20]`, unit `servings/day`
+- **Missing/stale behavior:** If either required input is missing or older than 720 hours relative to `calculated_for_timestamp`, return `status: "limited"` and `level: null`. If optional inputs are missing or stale, proceed and append an optional-input limitation note.
+- **Excluded data:** Direct PII (name, email, phone, national ID) and precise GPS coordinates are excluded from the snapshot payload.
+
+#### 4. Logic and scoring specification (`rules-v1.0.0`)
+- **Guideline references:** WHO guidelines on physical activity and sedentary behavior (150+ min/week moderate activity for adults), WHO tobacco prevention guidance, and general adult preventive sleep/nutrition guidance.
+- **Factor rules & weights:**
+  - `physical_activity_minutes_per_week`:
+    - `< 75` min/week → `+2` points (`factor_code: "physical_activity_very_low"`, `direction: "increases_risk"`)
+    - `75` to `149` min/week → `+1` point (`factor_code: "physical_activity_below_guideline"`, `direction: "increases_risk"`)
+    - `>= 150` min/week → `+0` points (`factor_code: "physical_activity_meets_guideline"`, `direction: "protective"`)
+  - `tobacco_use_status`:
+    - `"current"` → `+3` points (`factor_code: "current_tobacco_use"`, `direction: "increases_risk"`) + **floor guardrail: minimum level is `moderate`**
+    - `"former"` → `+1` point (`factor_code: "former_tobacco_use"`, `direction: "increases_risk"`)
+    - `"never"` → `+0` points (`factor_code: "no_tobacco_use"`, `direction: "protective"`)
+  - `sleep_hours_avg` (when present and fresh):
+    - `< 6` or `> 10` hours/day → `+1` point (`factor_code: "sleep_duration_outside_recommended_range"`, `direction: "increases_risk"`)
+    - `6` to `10` hours/day → `+0` points (`factor_code: "sleep_duration_adequate"`, `direction: "protective"`)
+  - `diet_fruit_veg_servings_per_day` (when present and fresh):
+    - `< 2` servings/day → `+1` point (`factor_code: "fruit_veg_intake_low"`, `direction: "increases_risk"`)
+    - `2` to `4` servings/day → `+0` points
+    - `>= 5` servings/day → `+0` points (`factor_code: "fruit_veg_intake_adequate"`, `direction: "protective"`)
+- **Level thresholds (`ADR-014`):**
+  - Total points `0`–`1` → `level: "low"`
+  - Total points `2`–`3` → `level: "moderate"`
+  - Total points `>= 4` → `level: "high"`
+
+#### 5. Outputs and mandatory limitations
+- Discrete `level` (`low`, `moderate`, `high`, or `null` when `limited`), ordered `contributing_factors`, mandatory base limitation (`"This is a preventive risk indicator based on self-reported lifestyle information, not a medical diagnosis."`), and allowlisted `recommended_next_steps`.
+
+#### 6. Evaluation and safety evidence
+- Verified via `ai-services/tests/` boundary matrix, 100-run determinism check, missing/stale input `limited`-status test, and zero sensitive-payload log-redaction test.
+
+#### 7. Monitoring, drift, and rollback
+- Track assessment count and status distribution (`complete` vs. `limited` vs. `failed`). Rollback target: disable use case via configuration (`status: "limited"`).
 
 ## 7. Acceptance criteria
 

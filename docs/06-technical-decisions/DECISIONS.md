@@ -145,21 +145,87 @@ When making or resolving a decision:
 
 ---
 
-## 4. Open decisions register (`OPEN-001` to `OPEN-012`)
+### ADR-010 — First vertical-slice geography, target population, and risk use case (`lifestyle_ncd_preventive`, `rules-v1.0.0`)
 
-The following decisions are documented across `docs/` (`01`–`05`) and require explicit team sign-off before the corresponding modules or production launch proceed:
+- **Status:** Accepted (Resolves `OPEN-001` for first vertical slice)
+- **Date:** 2026-11-19
+- **Context:** The first vertical slice must prove the full end-to-end flow (sign-in → consent → health input → risk calculation → dashboard explanation → audit & authorization isolation) without blocking on external third-party meteorological or air-quality API contracts. In the proposal, NCDs account for 46–61.2% of deaths in Rwanda and depend on modifiable lifestyle inputs that a citizen can self-report directly.
+- **Decision:**
+  1. **Target geography and users:** First release targets **adult citizens in Rwanda (`18+`)**, avoiding minor/guardian consent flows in Slice 1 (`DATA_PRIVACY.md` §10).
+  2. **Languages:** Launch Slice 1 in **English** while using structured localization keys (`explanation_key`, `action_code`) so **Kinyarwanda** and **French** translations can be plugged in without changing backend or AI-service contracts.
+  3. **First vertical-slice risk use case:** Approve `lifestyle_ncd_preventive` (`rules-v1.0.0`), evaluating four allowlisted self-reported inputs (freshness window `max_age_hours: 720` / 30 days):
+     - `physical_activity_minutes_per_week` (integer, `0`–`5040`, unit `min/week`; required)
+     - `tobacco_use_status` (enum: `never`, `former`, `current`; required)
+     - `sleep_hours_avg` (numeric, `0`–`24`, unit `hours/day`; optional)
+     - `diet_fruit_veg_servings_per_day` (integer, `0`–`20`, unit `servings/day`; optional)
+- **Consequences:**
+  - Slice 1 is 100% self-contained and deterministic.
+  - Missing or stale required inputs (`physical_activity_minutes_per_week` or `tobacco_use_status`) return `status: "limited"` and `level: null`.
+- **Related:** [RISK_SCORING.md](../04-artificial-intelligence/RISK_SCORING.md), [MODEL_DOCUMENTATION.md](../04-artificial-intelligence/MODEL_DOCUMENTATION.md), [DATABASE_SCHEMA.md](../02-architecture-and-engineering/DATABASE_SCHEMA.md)
+
+### ADR-011 — Standards-based OIDC / JWT authentication boundary (Supabase Auth & local OIDC compatible) and removal of `support_operator`
+
+- **Status:** Accepted (Resolves `OPEN-002` and the two discrepancies in `ACCESS_CONTROL.md` §20)
+- **Date:** 2026-11-19
+- **Context:** Requirement `DP-003` references Supabase/Auth-managed identity data, while `TECH_STACK.md` §7 allows a standards-based OIDC provider, Keycloak, or Supabase Auth boundary. In addition, `API_DOCUMENTATION.md` §4.2 listed `support_operator` as a candidate role even though `REQUIREMENTS.md` §2 never defined it as an actor.
+- **Decision:**
+  1. **OIDC/JWT verification boundary:** The NestJS core API validates standard signed JWT access tokens (`iss`, `aud`, `exp`, `sub`, signature via JWKS/secret). **Supabase Auth** is the default managed identity boundary for cloud staging/production (satisfying `DP-003`), while local development and CI tests use a deterministic OIDC-compatible JWT signer with identical claims so tests run 100% offline.
+  2. **Role consolidation:** Remove the undefined `support_operator` candidate role. The approved role enum is strictly: `citizen`, `provider`, `facility_user`, `community_health_worker`, and `platform_admin` (with only `citizen` and `platform_admin` active in the first vertical slice).
+- **Consequences:**
+  - Resolves both discrepancies in `ACCESS_CONTROL.md` §20.
+  - Local tests and CI never depend on internet connectivity to an external auth cloud.
+- **Related:** [ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md), [API_DOCUMENTATION.md](../02-architecture-and-engineering/API_DOCUMENTATION.md), [TECH_STACK.md](../02-architecture-and-engineering/TECH_STACK.md)
+
+### ADR-012 — Prisma ORM + Prisma Migrate with `user_accounts` domain table naming
+
+- **Status:** Accepted (Resolves `OPEN-003`)
+- **Date:** 2026-11-19
+- **Context:** `DATABASE_SCHEMA.md` §18 left the choice of TypeScript ORM, migration tool, and account table naming (`users`, `profiles`, or `user_accounts`) open.
+- **Decision:**
+  1. Adopt **Prisma ORM** and **Prisma Migrate** (`prisma migrate deploy` in production, never `db push`) for the NestJS core API against PostgreSQL/PostGIS.
+  2. Standardize the primary application account table name as **`user_accounts`** (matching `DATABASE_SCHEMA.md` §4.2), keeping public API routes under `/api/v1/me` and `/api/v1/me/profile`.
+- **Consequences:**
+  - End-to-end compile-time type safety between PostgreSQL schema, NestJS repositories, and versioned SQL migrations.
+- **Related:** [DATABASE_SCHEMA.md](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [TECH_STACK.md](../02-architecture-and-engineering/TECH_STACK.md), [CODING_STANDARDS.md](../05-development-standards/CODING_STANDARDS.md)
+
+### ADR-013 — Synchronous internal HTTP call (`<= 2000ms` timeout) with signed service authentication for Slice 1 risk calculation
+
+- **Status:** Accepted (Resolves `OPEN-004`)
+- **Date:** 2026-11-19
+- **Context:** Deterministic rule evaluation in `ai-services/risk_engine/` takes single-digit milliseconds in memory. Requiring Redis/BullMQ queue polling for a single user-triggered rule calculation in Slice 1 adds unnecessary latency and moving parts, whereas batch/ingestion recalculations and reports still benefit from asynchronous queues later.
+- **Decision:**
+  1. For the first vertical slice (`POST /api/v1/me/risk-assessments`), the NestJS core API calls `ai-services` (`POST /internal/v1/risk-assessments/calculate`) **synchronously over the private network** with a strict **`2000ms` timeout**.
+  2. Internal requests are authenticated with a dedicated **`X-Internal-Service-Token`** (shared high-entropy secret / HMAC verified in constant time by FastAPI middleware) plus `X-Request-Id` propagation.
+  3. If `ai-services` times out or is unreachable, the core API records and returns a safe `failed`/unavailable status—never inferring low risk.
+- **Consequences:**
+  - Immediate response for citizen-triggered rule assessments in Slice 1 while preserving the exact internal contract for future BullMQ workers.
+- **Related:** [AI_ARCHITECTURE.md](../04-artificial-intelligence/AI_ARCHITECTURE.md), [SYSTEM_DESIGN.md](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [SECURITY.md](../03-security-and-privacy/SECURITY.md)
+
+### ADR-014 — Standardized discrete risk-level vocabulary (`low`, `moderate`, `high`, and `null` when `limited` or `failed`)
+
+- **Status:** Accepted (Resolves `OPEN-005`)
+- **Date:** 2026-11-19
+- **Context:** `UI_UX.md` §6, `DATABASE_SCHEMA.md` §18, and `RISK_SCORING.md` §5.4 required final sign-off on the risk-level vocabulary and whether raw numeric point totals are exposed to citizens.
+- **Decision:**
+  1. Standardize `risk_assessment.status` as `queued | processing | complete | limited | failed | superseded`.
+  2. Standardize `risk_assessment.level` as **`low | moderate | high`** when `status === "complete"`, and **`null`** whenever `status` is `"limited"`, `"failed"`, `"queued"`, or `"processing"`.
+  3. Do **not** display raw numerical weight sums or percentages in the citizen UI; display the discrete level (`low`, `moderate`, `high`), ordered contributing factors, provenance timestamp, rule version, mandatory non-diagnostic limitations, and preventive next steps.
+- **Consequences:**
+  - Prevents false clinical precision and prevents clinical staging confusion (`mild`, `severe`, `positive`, `diagnosed` are forbidden).
+- **Related:** [RISK_SCORING.md](../04-artificial-intelligence/RISK_SCORING.md), [UI_UX.md](../02-architecture-and-engineering/UI_UX.md), [API_DOCUMENTATION.md](../02-architecture-and-engineering/API_DOCUMENTATION.md)
+
+---
+
+## 4. Remaining open decisions register (`OPEN-006` to `OPEN-012` — post-Slice 1 & pre-production gates)
+
+The first vertical-slice technical decisions (`OPEN-001` through `OPEN-005`) are now **resolved and promoted to `ADR-010` through `ADR-014` above**. The remaining operational, clinical, vendor, and regulatory decisions below apply before later feature phases or live production citizen data:
 
 | ID | Decision topic | Candidate options / recommendation | Blocking milestone | Primary doc references |
 |---|---|---|---|---|
-| **OPEN-001** | **First-release geography, languages, target users, and first vertical-slice risk use case** | *Recommended:* Launch first in Rwanda for adult citizens (`18+`, or `16+` per Law N° 058/2021 after legal check), starting with the self-contained `lifestyle_ncd_preventive` indicator (`rules-v1.0.0`) for the first vertical slice before adding weather-dependent malaria/respiratory indicators. Confirm language scope (English, Kinyarwanda, French). | First vertical slice & Phase 1 scope | [PROJECT_SCOPE.md](../01-project-foundation/PROJECT_SCOPE.md) §7, [RISK_SCORING.md](../04-artificial-intelligence/RISK_SCORING.md) §3 |
-| **OPEN-002** | **Identity provider selection and DP-003 wording alignment** | Managed OIDC provider vs. self-hosted Keycloak vs. confirmed Supabase Auth boundary (with Albo-owned PostgreSQL application tables). Also resolve whether `support_operator` in `API_DOCUMENTATION.md` §4.2 is retained or removed. | First vertical slice Step 1 (Auth) | [TECH_STACK.md](../02-architecture-and-engineering/TECH_STACK.md) §7, [ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md) §19–20 |
-| **OPEN-003** | **ORM, migration tool, and application table naming (`user_accounts` vs. `users`)** | Select one typed TypeScript ORM + migration runner for NestJS (e.g., Prisma, Drizzle, or TypeORM with `synchronize: false`) and finalize table names and first-release allowlisted `field_code` values. | First vertical slice database migration | [DATABASE_SCHEMA.md](../02-architecture-and-engineering/DATABASE_SCHEMA.md) §18, [TECH_STACK.md](../02-architecture-and-engineering/TECH_STACK.md) §16 |
-| **OPEN-004** | **Internal NestJS ↔ FastAPI execution mode and service auth** | *Recommended for first vertical slice:* Synchronous HTTP call with strict timeout (`<= 2000ms`) and signed internal service bearer token (or mTLS), adding BullMQ async worker queue for batch/ingestion triggers. | First vertical slice Step 6 (Risk engine call) | [AI_ARCHITECTURE.md](../04-artificial-intelligence/AI_ARCHITECTURE.md) §6–7, §13 |
-| **OPEN-005** | **Risk-level vocabulary and display rules** | *Recommended:* Approve discrete levels `low`, `moderate`, `high` (for `status: "complete"`), `null` (for `status: "limited"` and `"failed"`), hiding raw numerical weights from citizen UI to avoid false clinical precision. | First vertical slice Step 7 (Dashboard UI) | [RISK_SCORING.md](../04-artificial-intelligence/RISK_SCORING.md) §5.4, §13, [UI_UX.md](../02-architecture-and-engineering/UI_UX.md) §6 |
-| **OPEN-006** | **Clinical reviewers and Rwanda emergency / self-harm escalation directory (FR-024)** | Name the qualified health/clinical reviewer(s) for rule-card sign-off and approve the verified Rwanda emergency, ambulance, and mental-health helpline contacts for the escalation card. | First clinical rule approval & before enabling wellbeing check-ins or AI assistant | [AI_SAFETY.md](../04-artificial-intelligence/AI_SAFETY.md) §4, §10, [MODEL_DOCUMENTATION.md](../04-artificial-intelligence/MODEL_DOCUMENTATION.md) §8 |
-| **OPEN-007** | **Rwanda Law N° 058/2021 compliance, NCSA registration, and hosting residency** | Confirm legal controller entity, Data Protection Officer/owner, NCSA registration, 48-hour breach procedure, and hosting region (local Rwanda hosting vs. NCSA-authorized cloud region). Also confirm permanent exclusion of genetic data mentioned in proposal onboarding. | Before collecting any real personal data in production | [DATA_PRIVACY.md](../03-security-and-privacy/DATA_PRIVACY.md) §3.1, §12, §18–19 |
-| **OPEN-008** | **Data retention periods, deletion grace period, and consent-withdrawal effects** | Approve exact retention durations per data category, backup expiry cycle, and confirm the proposed conservative consent-withdrawal rule (immediately stop future processing and provider access). | Before production launch | [DATA_PRIVACY.md](../03-security-and-privacy/DATA_PRIVACY.md) §7.3, §8, [ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md) §8.1 |
-| **OPEN-009** | **First-release provider portal inclusion vs. facility discovery only** | Decide whether the first public release includes only citizen facility discovery/directions (`FR-026` to `FR-028`) or also provider assignment and portal access (`FR-031` to `FR-034`). (Excluded from the first vertical slice in either case.) | Phase 4 (First preventive-health release scope) | [PROJECT_SCOPE.md](../01-project-foundation/PROJECT_SCOPE.md) §7, [ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md) §17, §19 |
+| **OPEN-006** | **Clinical reviewers and Rwanda emergency / self-harm escalation directory (FR-024)** | Name the qualified health/clinical reviewer(s) for production rule sign-off and approve the verified Rwanda emergency, ambulance, and mental-health helpline contacts for the escalation card. | Before enabling wellbeing check-ins, the AI assistant, or production clinical release | [AI_SAFETY.md](../04-artificial-intelligence/AI_SAFETY.md) §4, §10, [MODEL_DOCUMENTATION.md](../04-artificial-intelligence/MODEL_DOCUMENTATION.md) §8 |
+| **OPEN-007** | **Rwanda Law N° 058/2021 compliance, NCSA registration, and hosting residency** | Confirm legal controller entity, Data Protection Officer/owner, NCSA registration, 48-hour breach procedure, and hosting region (local Rwanda hosting vs. NCSA-authorized cloud region). Genetic data mentioned in the proposal remains permanently excluded unless separately approved. | Before collecting any real personal data in production | [DATA_PRIVACY.md](../03-security-and-privacy/DATA_PRIVACY.md) §3.1, §12, §18–19 |
+| **OPEN-008** | **Data retention periods, deletion grace period, and consent-withdrawal effects** | Approve exact retention durations per data category, backup expiry cycle, and confirm the conservative consent-withdrawal rule (immediately stop future processing and provider access). | Before production launch | [DATA_PRIVACY.md](../03-security-and-privacy/DATA_PRIVACY.md) §7.3, §8, [ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md) §8.1 |
+| **OPEN-009** | **First-release provider portal inclusion vs. facility discovery only** | Decide whether the first public release includes only citizen facility discovery/directions (`FR-026` to `FR-028`) or also provider assignment and portal access (`FR-031` to `FR-034`). | Phase 4 (First preventive-health release scope) | [PROJECT_SCOPE.md](../01-project-foundation/PROJECT_SCOPE.md) §7, [ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md) §17, §19 |
 | **OPEN-010** | **Rwanda facility, map, weather, air-quality, and notification providers** | Select authoritative Rwanda facility data source (e.g., MoH/RBC registry or approved dataset), map/routing provider, meteorological/air-quality APIs (e.g., Meteo Rwanda / approved weather API), and notification channel. | Before enabling environmental risk use cases, maps, and external alerts | [INTEGRATIONS.md](../02-architecture-and-engineering/INTEGRATIONS.md) §19 |
 | **OPEN-011** | **AI assistant first-release inclusion and adapter implementation** | Decide whether the assistant (`Should`) is included in the first release or staged after MVP, and whether it launches as an in-house deterministic template/knowledge-retrieval assistant or uses a residency-compliant external LLM API. | Phase 2 AI evolution / Assistant activation | [AI_ASSISTANT.md](../04-artificial-intelligence/AI_ASSISTANT.md) §9–12 |
 | **OPEN-012** | **Hosting infrastructure, CI/CD, observability backend, and RPO/RTO targets** | Select container hosting platform, secret manager, OpenTelemetry/Grafana observability target, and backup recovery targets (RPO/RTO). | Staging and production deployment setup | [DEPLOYMENT.md](../05-development-standards/DEPLOYMENT.md) §11, [SECURITY.md](../03-security-and-privacy/SECURITY.md) §20 |

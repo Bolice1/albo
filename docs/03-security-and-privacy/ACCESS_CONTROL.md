@@ -88,8 +88,9 @@ Roles come from the API candidate list (API §4.2) and the requirement actors (R
 | `facility_user` | Facility or pharmacy user | Own organization's facility data; citizen data only via assignment and consent | To validate |
 | `community_health_worker` | Community health worker | Assigned people or approved group, within scope and consent | To validate |
 | `platform_admin` | Platform administrator | Configuration and account administration; no automatic health-record access | Proposed |
-| `support_operator` | Not yet defined as a requirement actor | To be defined | To validate — appears in API candidate roles but not in REQUIREMENTS actors |
 | — | Family member | Only explicitly authorized information (REQUIREMENTS §2, UI/UX) | Later / to validate — no delegation model approved |
+
+> Note: `support_operator` was previously listed as a candidate in `API_DOCUMENTATION.md` §4.2 without an actor in `REQUIREMENTS.md`; per [ADR-011](../06-technical-decisions/DECISIONS.md), it has been removed from the active role enum.
 
 > A user may hold more than one role (for example, a provider who is also a citizen). Each request is evaluated against the context of the route being called: `/me/*` routes act on the caller's own records as a citizen; provider routes require the provider role and an assignment. Role contexts must not be merged to widen access.
 
@@ -327,9 +328,9 @@ The access-control design is ready for implementation when:
 - Emergency or break-glass procedure (currently not approved)
 - Access-review frequency and audit-log access roles
 
-## 20. Discrepancies to resolve
+## 20. Resolved documentation discrepancies
 
-| Topic | Observation | Action |
+| Topic | Observation | Resolution (`2026-11-19`) |
 |---|---|---|
-| `support_operator` role | Listed in API §4.2 candidate roles but not defined as an actor in REQUIREMENTS §2 | Define the actor or remove the role |
-| Identity provider | DP-003 references Supabase/Auth-managed identity data while TECH_STACK leaves the provider open | Confirm the identity provider and update DP-003 wording if needed |
+| `support_operator` role | Listed in API §4.2 candidate roles but not defined as an actor in REQUIREMENTS §2 | **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md):** Removed `support_operator` from the role enum (`citizen`, `provider`, `facility_user`, `community_health_worker`, `platform_admin`) |
+| Identity provider | DP-003 references Supabase/Auth-managed identity data while TECH_STACK leaves the provider open | **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md):** Standard OIDC/JWT validation boundary in NestJS with Supabase Auth as the default managed cloud provider and offline OIDC-compatible JWTs for local/CI testing |

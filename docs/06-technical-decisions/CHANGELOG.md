@@ -31,7 +31,7 @@ Every significant change to requirements, APIs, database schemas, security/priva
   - [DEPLOYMENT.md](../05-development-standards/DEPLOYMENT.md): Defined the Docker packaging baseline, public-edge vs. private-network topology, 4-environment isolation rule (`development`, `test`, `staging`, `production`), multi-stage non-root Dockerfile rules, 6-stage CI/CD pipeline, expand-and-contract migrations, backup/restore drills, and Rwanda Law N° 058/2021 pre-production readiness checklist.
   - [CONTRIBUTING.md](../05-development-standards/CONTRIBUTING.md): Defined the contributor and AI-agent workflow, doc-sync rules, tiered reviewer requirements (including dual review for security/auth and clinical sign-off for risk/escalation rules), and PR verification checklist.
 - **Technical decisions (`docs/06-technical-decisions/`):**
-  - [DECISIONS.md](DECISIONS.md): Recorded foundational Architecture Decision Records (`ADR-001` through `ADR-009`) and consolidated the master open-decisions register (`OPEN-001` through `OPEN-012`).
+  - [DECISIONS.md](DECISIONS.md): Recorded foundational Architecture Decision Records (`ADR-001` through `ADR-014`, resolving all first vertical-slice technical decisions `OPEN-001` through `OPEN-005`) and consolidated the remaining post-Slice-1/pre-production open-decisions register (`OPEN-006` through `OPEN-012`).
   - [CHANGELOG.md](CHANGELOG.md): Created this repository changelog.
 
 #### Updated

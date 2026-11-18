@@ -297,7 +297,12 @@ All four `05-development-standards/` documents are now drafted and ready for rev
   - `ADR-007`: 100% synthetic data outside production and zero sensitive-payload logging
   - `ADR-008`: PostgreSQL/PostGIS durable store, Redis/BullMQ for jobs only, and Docker packaging without initial Kubernetes
   - `ADR-009`: Single citizen vertical slice as the first implementation target
-- Consolidated master register of open decisions (`OPEN-001` through `OPEN-012`) mapped to blocking milestones
+  - `ADR-010`: First vertical-slice geography (Rwanda, adults `18+`, English with Kinyarwanda/French localization keys) and self-contained `lifestyle_ncd_preventive` (`rules-v1.0.0`) use case
+  - `ADR-011`: Standards-based OIDC/JWT auth boundary (Supabase Auth default + local offline JWT test signer) and removal of unused `support_operator` role
+  - `ADR-012`: Prisma ORM + Prisma Migrate with `user_accounts` table naming
+  - `ADR-013`: Synchronous NestJS ↔ FastAPI HTTP call (`<= 2000ms` timeout) authenticated via `X-Internal-Service-Token` for Slice 1
+  - `ADR-014`: Discrete risk-level vocabulary (`low`, `moderate`, `high`, and `null` when `limited` or `failed`)
+- Consolidated register of remaining post-Slice-1 / pre-production decisions (`OPEN-006` through `OPEN-012`)
 
 ### CHANGELOG.md (proposed draft, 2026-11-19)
 
