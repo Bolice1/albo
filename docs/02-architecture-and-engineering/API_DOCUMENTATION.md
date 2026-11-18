@@ -75,7 +75,7 @@ Every protected resource requires the combination of:
 - Consent and purpose limitation
 - Operation-specific permission
 
-Candidate roles are `citizen`, `provider`, `facility_user`, `community_health_worker`, `platform_admin`, and `support_operator`. Exact role permissions require approval.
+Approved roles per [ADR-011](../06-technical-decisions/DECISIONS.md) are `citizen`, `provider`, `facility_user`, `community_health_worker`, and `platform_admin` (`support_operator` was retired for consistency with `REQUIREMENTS.md` §2). Exact role permissions follow [ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md).
 
 An administrator must not automatically receive unrestricted access to health records. Provider access must be scoped to assigned or explicitly authorized people and actions.
 
