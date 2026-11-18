@@ -151,22 +151,37 @@
 - [AGENTS.md](../AGENTS.md) — AI coding-agent instructions
 - [Documentation map](README.md) — documentation structure and ownership
 
-## 4. Collaborator-owned documentation
+## 4. Security and privacy in progress
 
-The following documentation areas intentionally remain empty for collaborators:
+### ACCESS_CONTROL.md (proposed draft, 2026-11-18)
 
-- `03-security-and-privacy/`
+- Access-control principles and deny-by-default decision model
+- Candidate roles and service identities
+- Proposed permission matrix
+- Assignment- and organization-scoped access
+- Consent- and purpose-aware access, including proposed withdrawal effects
+- Administrative access, separation of duties, and break-glass position
+- Enforcement points, location and report access
+- Access auditing, lifecycle, and authorization test matrix
+- Open decisions and documentation discrepancies to resolve
+
+Remaining in `03-security-and-privacy/`: `SECURITY.md`, `DATA_PRIVACY.md`, `THREAT_MODEL.md`.
+
+## 5. Collaborator-owned documentation
+
+The following documentation areas remain empty for collaborators:
+
 - `04-artificial-intelligence/`
 - `05-development-standards/`
 - `06-technical-decisions/`
 
-## 5. Current overall status
+## 6. Current overall status
 
 The project foundation and architecture/engineering documentation are complete as proposed drafts. They are ready for team review, clarification, and approval before implementation.
 
 No application code has been implemented yet.
 
-## 6. Main decisions still requiring approval
+## 7. Main decisions still requiring approval
 
 - First-release geography, language, users, and risk use cases
 - Identity provider and authentication boundary
@@ -177,7 +192,7 @@ No application code has been implemented yet.
 - First vertical slice to implement
 - Hosting, budget, operational ownership, and recovery targets
 
-## 7. Recommended next step
+## 8. Recommended next step
 
 Review and approve the first vertical slice before implementation:
 
