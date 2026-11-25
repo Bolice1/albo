@@ -1,6 +1,6 @@
 # Albo architectural and technical decisions
 
-**Status:** Active decision log — single source of truth for architectural, product-boundary, security, privacy, and AI governance decisions  
+**Status:** Approved — active decision log and single source of truth for architectural, product-boundary, security, privacy, and AI governance decisions  
 **Owner:** Shared engineering, architecture, security, and clinical governance team (Apex Phantoms)  
 **Related:** [Changelog](CHANGELOG.md), [AGENTS.md](../../AGENTS.md), [Project status](../PROJECT_STATUS.md), [Architecture](../02-architecture-and-engineering/ARCHITECTURE.md), [Tech stack](../02-architecture-and-engineering/TECH_STACK.md), [Access control](../03-security-and-privacy/ACCESS_CONTROL.md), [Data privacy](../03-security-and-privacy/DATA_PRIVACY.md), [AI architecture](../04-artificial-intelligence/AI_ARCHITECTURE.md), [AI safety](../04-artificial-intelligence/AI_SAFETY.md)
 
@@ -28,7 +28,7 @@ When making or resolving a decision:
 
 ---
 
-## 3. Baseline and proposed architecture decision records (ADRs)
+## 3. Architecture decision records (ADRs)
 
 ### ADR-001 — Modular monolith core backend with a separate internal AI service
 
@@ -68,7 +68,7 @@ When making or resolving a decision:
 
 ### ADR-004 — Deny-by-default, relationship- and consent-aware access control
 
-- **Status:** Proposed (Drafted in ACCESS_CONTROL.md from FR-003, FR-031, FR-035, DP-002)
+- **Status:** Accepted (Approved in ACCESS_CONTROL.md — FR-003, FR-031, FR-035, DP-002)
 - **Date:** 2026-11-18
 - **Context:** Albo serves citizens, healthcare providers, facility users, community health workers, and platform administrators. Standard role-based access control (RBAC) where any "provider" or "admin" can read all patient records violates privacy and least privilege.
 - **Decision:**
@@ -116,7 +116,7 @@ When making or resolving a decision:
 
 ### ADR-008 — PostgreSQL/PostGIS primary store, Redis/BullMQ for jobs only, and Docker packaging without initial Kubernetes
 
-- **Status:** Proposed (ARCHITECTURE §10, §12, DATABASE_SCHEMA §2, TECH_STACK §6, §11)
+- **Status:** Accepted (ARCHITECTURE §10, §12, DATABASE_SCHEMA §2, TECH_STACK §6, §11)
 - **Date:** 2026-11-14
 - **Context:** The team needs reliable relational constraints and spatial facility queries without premature infrastructure complexity.
 - **Decision:**
@@ -129,7 +129,7 @@ When making or resolving a decision:
 
 ### ADR-009 — First implementation target is a single citizen vertical slice
 
-- **Status:** Proposed (SYSTEM_DESIGN §20, PROJECT_STATUS §10)
+- **Status:** Accepted (SYSTEM_DESIGN §20, PROJECT_STATUS §10)
 - **Date:** 2026-11-14
 - **Context:** Attempting to build all disease use cases, external weather/map integrations, provider portals, and the AI assistant simultaneously risks integration failure and unverified safety boundaries.
 - **Decision:** Implement and verify **one complete end-to-end citizen vertical slice** first:

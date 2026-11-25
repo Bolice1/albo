@@ -1,13 +1,13 @@
 # API documentation
 
-**Status:** Proposed contract — implementation has not started  
+**Status:** Approved — implementation contract (application code has not started)  
 **Version:** `v1`  
 **Owner:** Core API / architecture owner  
 **Related:** [Requirements](../01-project-foundation/REQUIREMENTS.md), [Architecture](ARCHITECTURE.md), [System design](SYSTEM_DESIGN.md)
 
 ## 1. Purpose
 
-This document defines the proposed contract between the Albo web client, the core backend, the AI service, and approved external integrations.
+This document defines the approved contract between the Albo web client, the core backend, the AI service, and approved external integrations.
 
 It is a design contract, not a list of implemented endpoints. An endpoint must not be built as approved functionality until its related requirement, data model, authorization rule, and acceptance test are approved.
 

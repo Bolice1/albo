@@ -1,6 +1,6 @@
 # Albo requirements
 
-**Status:** Draft — validate with the team, proposal owners, and appropriate health stakeholders  
+**Status:** Approved — items marked `To validate` still require stakeholder, legal, or clinical confirmation before production  
 **Scope:** First release unless marked `Later`  
 **Source:** `PROJECT_OVERVIEW.md`, `PROJECT_SCOPE.md`, and `Albo_Project_Proposal.docx`
 

@@ -1,6 +1,6 @@
 # Albo roadmap
 
-**Status:** Proposed — sequence, ownership, dates, and release targets require team agreement  
+**Status:** Approved  
 **Related documents:** [Project scope](PROJECT_SCOPE.md), [Requirements](REQUIREMENTS.md), [Project overview](PROJECT_OVERVIEW.md)
 
 ## 1. How to use this roadmap
@@ -18,9 +18,9 @@ Work should move to the next phase only when its gate is reviewed and accepted. 
 
 ## 2. Current position
 
-**Phase 0 — Documentation and product foundation**
+**Phase 0 — Documentation and product foundation (Approved) → Phase 1 — Architecture and engineering foundation**
 
-The repository currently contains the initial product overview, scope, requirements, and architecture direction. The next work is to review these documents with the team, resolve open decisions, and convert approved requirements into implementation-ready work.
+The repository's foundational product, architecture, security, privacy, AI, development-standards, and technical-decision documentation is approved. The current focus is completing the Phase 1 engineering foundation and delivering the first citizen vertical slice while resolving remaining pre-production decisions (`OPEN-006` through `OPEN-012`).
 
 ## 3. Roadmap phases
 

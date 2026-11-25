@@ -1,6 +1,8 @@
 # Albo documentation map
 
-This directory is the shared project context for the team and AI coding agents. The proposal is the product source; these files translate it into reviewable engineering contracts.
+**Status:** Approved  
+
+This directory is the shared project context for the team and AI coding agents. The proposal is the product source; these files define the approved engineering contracts.
 
 Read the [project documentation status](PROJECT_STATUS.md) for the current completion report.
 
@@ -15,7 +17,7 @@ Read the [project documentation status](PROJECT_STATUS.md) for the current compl
 | 05 — Development standards | Shared |
 | 06 — Technical decisions | Shared |
 
-`Draft` means captured from the proposal and ready for review. `Proposed` means it requires team agreement. `To validate` must not be treated as a firm implementation requirement.
+`Approved` means agreed by the team as the active documentation baseline. `Proposed` means an unapproved option requiring a recorded decision before implementation. `To validate` must not be treated as a firm implementation requirement until confirmed with the appropriate clinical, legal, or operational stakeholder.
 
 ## Complete document set
 

@@ -1,12 +1,12 @@
 # Albo database schema
 
-**Status:** Conceptual draft — no migrations approved  
+**Status:** Approved — conceptual domain schema (versioned SQL migrations implemented per vertical slice via Prisma Migrate)  
 **Primary store:** PostgreSQL; PostGIS only for approved geographic use cases  
 **Related:** [Architecture](ARCHITECTURE.md), [API documentation](API_DOCUMENTATION.md), [Requirements](../01-project-foundation/REQUIREMENTS.md)
 
 ## 1. Purpose and scope
 
-This document defines the proposed data domains, relationships, ownership rules, provenance requirements, and database constraints for Albo.
+This document defines the approved data domains, relationships, ownership rules, provenance requirements, and database constraints for Albo.
 
 It is not a final SQL migration. Exact fields, retention periods, legal classifications, and clinical record structures require review before implementation. The first release should implement only the entities required by the approved first-release user journeys.
 

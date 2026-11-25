@@ -1,6 +1,6 @@
 # Albo architecture
 
-**Status:** Proposed — owner: project foundation and architecture lead  
+**Status:** Approved — owner: project foundation and architecture lead  
 **Related:** [System design](SYSTEM_DESIGN.md), [Technology stack](TECH_STACK.md), [API documentation](API_DOCUMENTATION.md), [Database schema](DATABASE_SCHEMA.md)
 
 ## 1. Architecture purpose

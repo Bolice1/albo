@@ -1,6 +1,6 @@
 # Contributing to Albo
 
-**Status:** Proposed — workflow guide for team members, collaborators, and AI coding agents  
+**Status:** Approved — workflow guide for team members, collaborators, and AI coding agents  
 **Owner:** Shared engineering team (Apex Phantoms / Albo contributors)  
 **Related:** [AGENTS.md](../../AGENTS.md), [Documentation map](../README.md), [Project status](../PROJECT_STATUS.md), [Coding standards](CODING_STANDARDS.md), [Testing strategy](TESTING_STRATEGY.md), [Deployment](DEPLOYMENT.md), [Decisions](../06-technical-decisions/DECISIONS.md), [Changelog](../06-technical-decisions/CHANGELOG.md)
 

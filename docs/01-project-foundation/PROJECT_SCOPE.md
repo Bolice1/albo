@@ -1,6 +1,6 @@
 # Project scope
 
-**Status:** Proposed — requires approval by the project team  
+**Status:** Approved  
 **Source:** `Albo_Project_Proposal.docx`, project conversation, and current requirements
 
 ## 1. Scope purpose

@@ -1,6 +1,6 @@
 # Albo security
 
-**Status:** Proposed — requires security, privacy, and architecture-owner approval  
+**Status:** Approved  
 **Owner:** Security and privacy (shared / collaborator-led)  
 **Related:** [Access control](ACCESS_CONTROL.md), [Data privacy](DATA_PRIVACY.md), [Threat model](THREAT_MODEL.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [Architecture](../02-architecture-and-engineering/ARCHITECTURE.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [Database schema](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [Integrations](../02-architecture-and-engineering/INTEGRATIONS.md), [Tech stack](../02-architecture-and-engineering/TECH_STACK.md)
 

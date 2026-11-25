@@ -4,7 +4,7 @@ Albo is an AI-powered preventive digital health hub designed to help people iden
 
 ## Project status
 
-Albo has completed its comprehensive documentation and engineering contract foundation across all six documentation areas (`01-project-foundation` through `06-technical-decisions`) and is ready for team sign-off on the first vertical slice.
+Albo's documentation and engineering contract foundation across all six documentation areas (`01-project-foundation` through `06-technical-decisions`) is **approved** and ready for Phase 1 engineering foundation and first vertical-slice implementation.
 
 ## Start here
 

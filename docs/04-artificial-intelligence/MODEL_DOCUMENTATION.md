@@ -1,6 +1,6 @@
 # Albo model documentation
 
-**Status:** Proposed — registry template and governance contract; no production models or rule versions approved yet  
+**Status:** Approved — registry template and governance contract (production clinical sign-off tracked per rule/model card)  
 **Owner:** Artificial intelligence and clinical/domain governance (shared / collaborator-led)  
 **Related:** [AI architecture](AI_ARCHITECTURE.md), [Risk scoring](RISK_SCORING.md), [AI assistant](AI_ASSISTANT.md), [AI safety](AI_SAFETY.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [Database schema](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [Decisions](../06-technical-decisions/DECISIONS.md)
 

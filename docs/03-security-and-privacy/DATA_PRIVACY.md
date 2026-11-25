@@ -1,6 +1,6 @@
 # Albo data privacy
 
-**Status:** Proposed — requires privacy owner, legal review, and product-owner approval  
+**Status:** Approved — baseline privacy contract (production legal and retention gates tracked in `OPEN-007` and `OPEN-008`)  
 **Owner:** Security and privacy (shared / collaborator-led)  
 **Related:** [Access control](ACCESS_CONTROL.md), [Security](SECURITY.md), [Threat model](THREAT_MODEL.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [Project scope](../01-project-foundation/PROJECT_SCOPE.md), [Database schema](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [Integrations](../02-architecture-and-engineering/INTEGRATIONS.md), [UI/UX](../02-architecture-and-engineering/UI_UX.md)
 

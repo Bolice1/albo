@@ -1,6 +1,6 @@
 # Albo changelog
 
-**Status:** Active repository and documentation changelog  
+**Status:** Approved — active repository and documentation changelog  
 **Format:** Chronological by date and milestone (aligned with [Keep a Changelog](https://keepachangelog.com/))  
 **Related:** [Decisions](DECISIONS.md), [Project status](../PROJECT_STATUS.md), [Documentation map](../README.md)
 
@@ -12,9 +12,17 @@ Every significant change to requirements, APIs, database schemas, security/priva
 
 ---
 
-## [Unreleased — Complete Documentation & Engineering Contract Baseline]
+## [Unreleased — Approved Documentation & Engineering Contract Baseline]
 
-**Implementation status:** All 6 documentation folders (`01` through `06`) completed as reviewable engineering contracts; application code implementation has not started yet (ready for the first vertical slice).
+**Implementation status:** All 6 documentation folders (`01` through `06`) are approved as active engineering contracts; application code implementation has not started yet (ready for Phase 1 foundation and the first vertical slice).
+
+### 2026-11-25 — Documentation baseline approval across `01` through `06`
+
+#### Updated
+- **All documentation status headers (`docs/01-*` through `docs/06-*`, `docs/README.md`, `docs/PROJECT_STATUS.md`, and root `README.md`):** Marked all 26 domain and governance documents as **Approved** and removed draft / proposed-draft document status labels.
+- **[DECISIONS.md](DECISIONS.md):** Promoted `ADR-004`, `ADR-008`, and `ADR-009` from `Proposed` to `Accepted` alongside the approved documentation baseline (`ADR-001` through `ADR-014` now all `Accepted`).
+
+---
 
 ### 2026-11-19 — Artificial intelligence (`04`), development standards (`05`), and technical decisions (`06`)
 

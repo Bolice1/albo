@@ -1,6 +1,6 @@
 # Albo technology stack
 
-**Status:** Proposed — validate against team skills, cost, hosting, security, and requirements  
+**Status:** Approved  
 **Decision direction:** TypeScript web and core API, Python AI service, PostgreSQL as the primary database, and a modular monolith first
 
 ## 1. Stack principles

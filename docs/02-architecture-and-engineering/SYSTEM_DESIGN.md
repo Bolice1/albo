@@ -1,13 +1,13 @@
 # Albo system design
 
-**Status:** Proposed — implementation-facing design  
+**Status:** Approved — implementation-facing design  
 **Related:** [Architecture](ARCHITECTURE.md), [API documentation](API_DOCUMENTATION.md), [Database schema](DATABASE_SCHEMA.md), [Integrations](INTEGRATIONS.md)
 
 ## 1. Purpose
 
 This document explains how Albo's components work together at runtime. It turns the architectural boundaries into request flows, background processes, state transitions, deployment units, and implementation guidance.
 
-The implementation is not yet complete. These flows are proposed contracts and must be updated when approved requirements or architectural decisions change.
+The implementation is not yet complete. These flows are approved contracts and must be updated when requirements or architectural decisions change.
 
 ## 2. Runtime topology
 

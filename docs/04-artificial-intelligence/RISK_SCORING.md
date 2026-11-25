@@ -1,6 +1,6 @@
 # Albo risk scoring
 
-**Status:** Proposed — requires clinical reviewer, product-owner, and AI/architecture approval  
+**Status:** Approved  
 **Owner:** Artificial intelligence and clinical/domain governance (shared / collaborator-led)  
 **Related:** [AI architecture](AI_ARCHITECTURE.md), [Model documentation](MODEL_DOCUMENTATION.md), [AI safety](AI_SAFETY.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [Project scope](../01-project-foundation/PROJECT_SCOPE.md), [Database schema](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [UI/UX](../02-architecture-and-engineering/UI_UX.md), [Threat model](../03-security-and-privacy/THREAT_MODEL.md)
 

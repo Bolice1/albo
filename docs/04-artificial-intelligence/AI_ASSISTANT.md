@@ -1,6 +1,6 @@
 # Albo AI assistant
 
-**Status:** Proposed — safety-gated (`Should` requirement); requires safety, clinical, privacy, and product-owner approval before activation  
+**Status:** Approved — safety-gated (`Should` requirement; runtime activation remains gated on `FR-024` escalation and `OPEN-006` / `OPEN-011`)  
 **Owner:** Artificial intelligence and clinical/safety governance (shared / collaborator-led)  
 **Related:** [AI architecture](AI_ARCHITECTURE.md), [Risk scoring](RISK_SCORING.md), [Model documentation](MODEL_DOCUMENTATION.md), [AI safety](AI_SAFETY.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [Project scope](../01-project-foundation/PROJECT_SCOPE.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [UI/UX](../02-architecture-and-engineering/UI_UX.md), [Data privacy](../03-security-and-privacy/DATA_PRIVACY.md), [Threat model](../03-security-and-privacy/THREAT_MODEL.md)
 

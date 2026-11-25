@@ -1,6 +1,6 @@
 # Albo coding standards
 
-**Status:** Proposed — applies to all future application, AI, database, and infrastructure code  
+**Status:** Approved — applies to all application, AI, database, and infrastructure code  
 **Owner:** Shared engineering team (Apex Phantoms / Albo contributors)  
 **Related:** [Testing strategy](TESTING_STRATEGY.md), [Deployment](DEPLOYMENT.md), [Contributing](CONTRIBUTING.md), [AGENTS.md](../../AGENTS.md), [Architecture](../02-architecture-and-engineering/ARCHITECTURE.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [Tech stack](../02-architecture-and-engineering/TECH_STACK.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [Database schema](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [Security](../03-security-and-privacy/SECURITY.md), [Data privacy](../03-security-and-privacy/DATA_PRIVACY.md), [AI safety](../04-artificial-intelligence/AI_SAFETY.md)
 

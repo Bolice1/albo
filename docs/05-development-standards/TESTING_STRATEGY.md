@@ -1,6 +1,6 @@
 # Albo testing strategy
 
-**Status:** Proposed — applies to all phases starting with the first vertical slice  
+**Status:** Approved — applies to all phases starting with the first vertical slice  
 **Owner:** Shared engineering team  
 **Related:** [Coding standards](CODING_STANDARDS.md), [Deployment](DEPLOYMENT.md), [Contributing](CONTRIBUTING.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [Tech stack](../02-architecture-and-engineering/TECH_STACK.md), [Access control](../03-security-and-privacy/ACCESS_CONTROL.md), [Security](../03-security-and-privacy/SECURITY.md), [AI safety](../04-artificial-intelligence/AI_SAFETY.md)
 

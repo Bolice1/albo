@@ -1,6 +1,6 @@
 # Albo AI safety
 
-**Status:** Proposed — mandatory safety contract; requires clinical, security, privacy, and product-owner approval  
+**Status:** Approved — mandatory safety contract  
 **Owner:** Artificial intelligence, security, and clinical governance (shared / collaborator-led)  
 **Related:** [AI architecture](AI_ARCHITECTURE.md), [Risk scoring](RISK_SCORING.md), [AI assistant](AI_ASSISTANT.md), [Model documentation](MODEL_DOCUMENTATION.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [Project scope](../01-project-foundation/PROJECT_SCOPE.md), [UI/UX](../02-architecture-and-engineering/UI_UX.md), [Security](../03-security-and-privacy/SECURITY.md), [Data privacy](../03-security-and-privacy/DATA_PRIVACY.md), [Threat model](../03-security-and-privacy/THREAT_MODEL.md)
 

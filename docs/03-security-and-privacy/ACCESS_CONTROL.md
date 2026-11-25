@@ -1,6 +1,6 @@
 # Albo access control
 
-**Status:** Proposed — requires security, privacy, and product-owner approval  
+**Status:** Approved  
 **Owner:** Security and privacy (shared / collaborator-led)  
 **Related:** [Requirements](../01-project-foundation/REQUIREMENTS.md), [Architecture](../02-architecture-and-engineering/ARCHITECTURE.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [Database schema](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [Integrations](../02-architecture-and-engineering/INTEGRATIONS.md), [UI/UX](../02-architecture-and-engineering/UI_UX.md)
 

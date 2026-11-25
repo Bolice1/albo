@@ -1,6 +1,6 @@
 # Albo UI/UX specification
 
-**Status:** Draft — product and interaction direction  
+**Status:** Approved — product and interaction direction  
 **Source:** `Albo_Project_Proposal.docx`, approved scope and requirements, and existing design work  
 **Related:** [Project overview](../01-project-foundation/PROJECT_OVERVIEW.md), [Project scope](../01-project-foundation/PROJECT_SCOPE.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [API documentation](API_DOCUMENTATION.md)
 

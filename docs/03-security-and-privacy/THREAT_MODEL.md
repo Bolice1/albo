@@ -1,6 +1,6 @@
 # Albo threat model
 
-**Status:** Proposed — initial design-time model; requires security, privacy, and architecture review  
+**Status:** Approved — design-time threat model  
 **Owner:** Security and privacy (shared / collaborator-led)  
 **Method:** STRIDE per trust boundary, plus health-, privacy-, and AI-specific abuse cases  
 **Related:** [Security](SECURITY.md), [Access control](ACCESS_CONTROL.md), [Data privacy](DATA_PRIVACY.md), [Architecture](../02-architecture-and-engineering/ARCHITECTURE.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [Integrations](../02-architecture-and-engineering/INTEGRATIONS.md), [AI safety](../04-artificial-intelligence/AI_SAFETY.md)

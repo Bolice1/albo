@@ -1,6 +1,6 @@
 # Albo AI architecture
 
-**Status:** Proposed — requires AI, architecture, security, and clinical-governance approval  
+**Status:** Approved  
 **Owner:** Artificial intelligence and architecture (shared / collaborator-led)  
 **Related:** [Risk scoring](RISK_SCORING.md), [AI assistant](AI_ASSISTANT.md), [Model documentation](MODEL_DOCUMENTATION.md), [AI safety](AI_SAFETY.md), [Requirements](../01-project-foundation/REQUIREMENTS.md), [Project scope](../01-project-foundation/PROJECT_SCOPE.md), [Architecture](../02-architecture-and-engineering/ARCHITECTURE.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md), [Database schema](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [Tech stack](../02-architecture-and-engineering/TECH_STACK.md), [Security](../03-security-and-privacy/SECURITY.md), [Data privacy](../03-security-and-privacy/DATA_PRIVACY.md)
 

@@ -1,6 +1,6 @@
 # Albo integrations
 
-**Status:** Proposed integration strategy — providers and contracts require approval  
+**Status:** Approved — integration architecture and boundary contract (external vendor selections tracked in `OPEN-010`)  
 **Related:** [Architecture](ARCHITECTURE.md), [Database schema](DATABASE_SCHEMA.md), [API documentation](API_DOCUMENTATION.md), [Project scope](../01-project-foundation/PROJECT_SCOPE.md)
 
 ## 1. Purpose

@@ -1,6 +1,6 @@
 # Albo deployment and operations
 
-**Status:** Proposed — defines local, CI/CD, staging, and production deployment standards  
+**Status:** Approved — defines local, CI/CD, staging, and production deployment standards  
 **Owner:** Shared engineering and operations team  
 **Related:** [Coding standards](CODING_STANDARDS.md), [Testing strategy](TESTING_STRATEGY.md), [Contributing](CONTRIBUTING.md), [Architecture](../02-architecture-and-engineering/ARCHITECTURE.md), [System design](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [Tech stack](../02-architecture-and-engineering/TECH_STACK.md), [Security](../03-security-and-privacy/SECURITY.md), [Data privacy](../03-security-and-privacy/DATA_PRIVACY.md), [AI safety](../04-artificial-intelligence/AI_SAFETY.md)
 

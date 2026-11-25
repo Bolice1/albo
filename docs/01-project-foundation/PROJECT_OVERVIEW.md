@@ -1,6 +1,6 @@
 # Albo project overview
 
-**Status:** Draft — product source: `Albo_Project_Proposal.docx`  
+**Status:** Approved — product source: `Albo_Project_Proposal.docx`  
 **Project:** Albo  
 **Team:** Apex Phantoms, Rwanda Coding Academy
 
