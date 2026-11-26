@@ -34,12 +34,12 @@ flowchart TD
 
 | Test layer | Location | Primary tools | Execution trigger |
 |---|---|---|---|
-| **Unit tests** | `frontend/`, `backend/`, `ai-services/tests/unit/` | Jest / Vitest, React Testing Library, Pytest | Pre-commit / every PR in CI |
-| **Database & migration tests** | `backend/test/database/` | Jest + ephemeral PostgreSQL/PostGIS container | Every PR in CI |
-| **API & authorization integration tests** | `backend/test/integration/` | Jest + Supertest + ephemeral PostgreSQL & Redis | Every PR in CI |
-| **OpenAPI & internal AI contract tests** | `backend/test/contracts/`, `ai-services/tests/contracts/` | OpenAPI schema validator, Pydantic contract fixtures | Every PR in CI |
+| **Unit tests** | `backend/` (Bun), `ai-services/tests/unit/` (`uv`), *(plus `frontend/` when onboarded per `ADR-016`)* | Jest (via `bun run test`), Pytest (via `uv run pytest`), *(Vitest + RTL when `frontend/` is onboarded)* | Pre-commit / every PR in CI |
+| **Database & migration tests** | `backend/test/database/` | Jest + ephemeral `postgis/postgis:16-3.4` container | Every PR in CI |
+| **API & authorization integration tests** | `backend/test/integration/` | Jest + Supertest + ephemeral PostgreSQL, Redis, & MinIO | Every PR in CI |
+| **OpenAPI & internal AI contract tests** | `backend/test/contracts/`, `ai-services/tests/contracts/` | OpenAPI schema validator, Pydantic v2 contract fixtures | Every PR in CI |
 | **AI safety & evaluation suites** | `ai-services/evaluation/` | Pytest + versioned synthetic benchmark datasets | Every PR touching `ai-services/` or rule configs, plus pre-release |
-| **End-to-end (E2E) & accessibility tests** | `frontend/tests/e2e/` | Playwright + `@axe-core/playwright` | Every PR affecting vertical slices + pre-release staging gate |
+| **End-to-end (E2E) & accessibility tests** | `frontend/tests/e2e/` *(deferred with `frontend/` per [ADR-016](../06-technical-decisions/DECISIONS.md))* | Playwright + `@axe-core/playwright` | Every PR affecting vertical slices once `frontend/` is onboarded |
 
 ## 4. Mandatory test suites by domain
 
@@ -105,16 +105,16 @@ To comply with AGENTS.md Rules 8–9 and DP-005:
 
 ## 6. First vertical-slice acceptance test plan
 
-Before the first vertical slice ([PROJECT_STATUS.md](../PROJECT_STATUS.md) §9, SYSTEM_DESIGN §20) is marked complete, the following automated end-to-end and integration scenario must pass in CI:
+Before the first vertical slice ([PROJECT_STATUS.md](../PROJECT_STATUS.md) §10, SYSTEM_DESIGN §20) is marked complete, the following automated integration and end-to-end scenario must pass in CI:
 
-1. **Auth & account mapping:** Synthetic Citizen A authenticates; `GET /api/v1/me` creates/retrieves the application account without exposing identity-provider internals (`DP-003`).
+1. **Auth & account mapping:** Synthetic Citizen A authenticates; `GET /api/v1/me` creates/retrieves the `user_accounts` record without exposing identity-provider internals (`DP-003`, `ADR-011`, `ADR-012`).
 2. **Consent enforcement:** Citizen A attempts `POST /api/v1/me/risk-assessments` before granting consent → request is refused or returns `limited` for missing consent (`FR-003`, `DP-002`).
-3. **Consent grant & audit:** Citizen A grants consent for health-input storage and preventive risk calculation (`POST /api/v1/me/consents`) → versioned consent record and redacted audit event are persisted (`FR-004`, `FR-038`).
-4. **Validated health input:** Citizen A submits one approved synthetic lifestyle/health input (`POST /api/v1/me/health-inputs`) → stored with `source_type: "self_reported"` and timestamp (`FR-007`, `FR-008`); an unapproved clinical field is rejected with `422` (`FR-009`).
-5. **Deterministic risk calculation:** Citizen A requests a risk calculation → core API creates an immutable `input_snapshot`, calls `ai-services/` (`rules-v1.0.0`), and stores the resulting `risk_assessment` (`FR-016`, `FR-017`, `FR-019`).
-6. **Safe dashboard display:** Citizen A views the dashboard/risk detail → UI displays the risk level, contributing factor, timestamp, rule version, non-diagnostic limitation statement, and preventive next step (`FR-011` to `FR-014`).
-7. **Stale/missing input fallback:** Citizen A requests a calculation when required input is missing or stale → API and UI return `status: "limited"` (`level: null`), never `"low"` (`FR-018`).
-8. **Cross-user isolation & audit:** Synthetic Citizen B attempts to read Citizen A's input or assessment by ID → receives `404 NOT_FOUND`, and an authorization-denial signal/audit record is recorded without sensitive payloads (`NFR-002`, `FR-039`).
+3. **Consent grant & audit:** Citizen A grants `health_input_storage` and `preventive_risk_calculation` (`v1`) consents (`POST /api/v1/me/consents`) → versioned consent records and redacted audit events are persisted (`FR-004`, `FR-038`, `ADR-015`).
+4. **Validated health input:** Citizen A submits approved synthetic lifestyle/health inputs (`POST /api/v1/me/health-inputs`) → stored with `source_type: "self_reported"` and timestamp (`FR-007`, `FR-008`); an unapproved clinical field is rejected with `422` (`FR-009`), and `PATCH /api/v1/me/health-inputs/{inputId}` creates a superseding `active` record (`ADR-017`).
+5. **Deterministic risk calculation:** Citizen A requests a risk calculation (`lifestyle_ncd_preventive`) → core API creates an immutable `input_snapshot`, calls `ai-services/` (`rule_model_version: "rules-v1.0.0"`), and stores the resulting `risk_assessment` (`FR-016`, `FR-017`, `FR-019`, `ADR-015`).
+6. **Safe explanation & dashboard payload:** Citizen A retrieves the assessment (`GET /api/v1/me/risk-assessments/{id}`) → API returns (and UI renders once `frontend/` is onboarded per `ADR-016`) the discrete `level`, `contributing_factors`, `calculated_at`, `rule_model_version`, non-diagnostic `limitations`, and `recommended_next_steps` (`FR-011` to `FR-014`).
+7. **Stale/missing input fallback:** Citizen A requests a calculation when a required input is missing or stale → API returns `status: "limited"` (`level: null`), never `"low"` (`FR-018`, `ADR-003`, `ADR-014`).
+8. **Cross-user isolation & audit:** Synthetic Citizen B attempts to read Citizen A's input or assessment by ID → receives `404 NOT_FOUND`, and an authorization-denial signal/audit record is recorded without sensitive payloads (`NFR-002`, `FR-039`, `ADR-004`).
 
 ## 7. Release testing gates
 

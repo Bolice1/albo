@@ -12,7 +12,7 @@ The project proposal describes a conversational assistant that helps users refle
 
 To deliver this safely, the assistant is strictly bounded:
 
-- It is a **`Should` capability gated by safety and escalation approval** (FR-021, FR-022, API §7, UI_UX §3). The dedicated mental-wellness hub remains a **`Later` phase capability** until its clinical-review, referral, and safety procedures are approved (FR-025, PROJECT_SCOPE §3.3, ROADMAP Phase 6).
+- It is a **`Should` capability gated by safety and escalation approval** (FR-021, FR-022, API §7, UI_UX §3). The dedicated mental-wellness hub remains a **`Later` phase capability** until its clinical-review, referral, and safety procedures are approved (FR-025, [PROJECT_SCOPE.md](../01-project-foundation/PROJECT_SCOPE.md) §5 Phase 2, [ROADMAP.md](../01-project-foundation/ROADMAP.md) §3 Phase 5).
 - It is an informational and navigation support tool—**never a doctor, therapist, diagnostic instrument, or emergency service** (FR-023, PROJECT_OVERVIEW §3).
 - Emergency, severe-symptom, and self-harm signals always follow a **deterministic, reviewed escalation flow** rather than relying on open-ended generative output (FR-024).
 
@@ -123,10 +123,10 @@ In accordance with TECH_STACK §5, §13, and §16:
 
 ## 10. First-release position
 
-Aligned with [PROJECT_STATUS.md](../PROJECT_STATUS.md), PROJECT_SCOPE §3, and SYSTEM_DESIGN §20:
+Aligned with [PROJECT_STATUS.md](../PROJECT_STATUS.md), PROJECT_SCOPE §3, SYSTEM_DESIGN §20, and [ADR-017](../06-technical-decisions/DECISIONS.md):
 
-- The **first vertical slice** excludes the conversational assistant so the team can validate authentication, consent, health-input provenance, deterministic risk scoring, and dashboard explanation first.
-- The assistant endpoints (`POST /api/v1/assistant/conversations` and `/messages`) remain disabled behind a feature flag until the emergency/self-harm escalation procedure (FR-024), clinical wording review, and privacy impact assessment are approved.
+- The **first vertical slice** excludes the conversational assistant so the team can validate authentication, consent, health-input provenance, deterministic risk scoring, and explanation contracts first.
+- The assistant endpoints (`/api/v1/assistant/conversations` and `/messages`) are gated behind the `FEATURE_ASSISTANT_ENABLED` runtime circuit breaker (defaulting to `false` in `production` while testable on synthetic fixtures in `development`/`test` per `ADR-017`) until the emergency/self-harm escalation procedure (FR-024, `OPEN-006`), clinical wording review, and privacy/vendor review (`OPEN-011`) are approved.
 
 ## 11. Acceptance criteria
 

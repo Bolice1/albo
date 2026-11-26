@@ -30,6 +30,8 @@ AI service (FastAPI)
 
 The core API is the public application boundary. It owns authentication integration, authorization, consent checks, business workflows, persistence, audit events, and response sanitization. The AI service must not become a second identity or permissions system.
 
+> **Onboarding boundary ([ADR-016](../06-technical-decisions/DECISIONS.md)):** Initial engineering onboarding builds and verifies `backend/` (`/api/v1`) and `ai-services/` (`/internal/v1`) end-to-end while deferring the `frontend/` Next.js client to a separate onboarding track.
+
 External providers must be accessed through backend adapters. Browser clients must not receive provider credentials or call sensitive external services directly unless an approved design explicitly permits it.
 
 ## 3. Base URL and versioning
@@ -190,60 +192,64 @@ The API must not return stack traces, SQL errors, tokens, provider credentials, 
 
 ## 7. Proposed public resource groups
 
-Only the first-release groups are candidates for initial implementation. `Later` groups require a separate approval gate.
+Only the first-release groups are candidates for initial implementation; runtime-gated groups enforce the feature-flag circuit breakers in [ADR-017](../06-technical-decisions/DECISIONS.md). `Later` groups require a separate approval gate.
 
-| Resource group | Example routes | First release |
+| Resource group | Example routes | First release / runtime gate |
 |---|---|---|
-| Current user | `/me` | Yes |
+| Current user & rights requests | `/me`, `/me/data-exports`, `/me/account-deletion-requests` | Yes (`Must` / `Should`) |
 | Profiles | `/me/profile` | Yes |
 | Consents | `/me/consents` | Yes |
-| Health and wellbeing inputs | `/me/health-inputs`, `/me/check-ins` | Yes, limited fields |
-| Risk assessments | `/me/risk-assessments` | Yes, rules first |
-| Facilities | `/facilities` | Yes |
-| Providers | `/providers` | Limited |
-| Notifications | `/me/notification-preferences` | Yes, limited |
-| Reports | `/me/reports` | Yes, basic reports |
-| Consultations | `/consultations` | Limited / approval required |
-| Environmental observations | `/environment` | Limited / source dependent |
-| Assistant | `/assistant/conversations` | Should / safety gate |
-| Audit events | Internal or restricted admin route | Yes, restricted |
-| Device connections | `/me/device-connections` | Later |
-| EHR interoperability | `/ehr` | Later |
+| Health and wellbeing inputs | `/me/health-inputs`, `/me/check-ins` | Yes (`check-ins` gated by `FEATURE_CHECKINS_ENABLED`) |
+| Risk assessments & trends | `/me/risk-assessments`, `/me/trends` | Yes, deterministic rules first (`ADR-002`, `ADR-010`) |
+| Facilities & directory | `/facilities`, `/providers`, `/referrals` | Yes, bounded location & provenance |
+| Provider portal | `/provider/patients/*` | Gated by `FEATURE_PROVIDER_PORTAL_ENABLED` (`OPEN-009`, `ADR-017`) |
+| Notifications | `/me/notification-preferences`, `/me/notifications` | Yes, in-app & sandbox adapter first (`ADR-017`) |
+| Reports | `/me/reports` | Yes, private S3/MinIO presigned URLs (`ADR-017`) |
+| Consultations | `/consultations` | Gated / approval required (`FEATURE_PROVIDER_PORTAL_ENABLED`, `OPEN-009`) |
+| Environmental observations | `/environment/observations` | Limited / typed adapter (`ADR-017`, `OPEN-010`) |
+| Assistant | `/assistant/conversations` | `Should` / gated by `FEATURE_ASSISTANT_ENABLED` (`OPEN-006`, `OPEN-011`) |
+| Administration & audit events | `/admin/*` | Yes, restricted to `platform_admin` (zero health-record access, `FR-035`) |
+| Device connections | `/me/device-connections` | Later (`FR-010`) |
+| EHR interoperability | `/ehr` | Later (`FR-010`, `FR-030`) |
 
-## 8. First-release endpoint proposals
+## 8. First-release and runtime-gated endpoint contracts
 
-These routes are proposed mappings to requirements. They are not implementation instructions until the data model and acceptance tests are approved.
-
-### 8.1 Current user and profile
+### 8.1 Current user, profile, data export, and account deletion
 
 | Method | Route | Purpose | Requirements |
 |---|---|---|---|
 | `GET` | `/api/v1/me` | Return the authenticated user's safe application identity | FR-001, DP-003 |
 | `GET` | `/api/v1/me/profile` | Return the caller's permitted profile | FR-005, FR-007 |
 | `PATCH` | `/api/v1/me/profile` | Update permitted profile fields | FR-005, FR-009 |
+| `POST` | `/api/v1/me/data-exports` | Request a machine-readable export of the caller's own records | FR-006, DP-007 |
+| `GET` | `/api/v1/me/data-exports/{exportId}` | View export status or owner-scoped short-lived download reference | FR-006, DP-007 |
+| `POST` | `/api/v1/me/account-deletion-requests` | Request account suspension and retention-governed erasure | FR-006, DP-007 |
 
-The response must not expose identity-provider secrets, password fields, private provider metadata, or another user's data.
+The response must not expose identity-provider secrets, password fields, private provider metadata, or another user's data. Account deletion requests immediately suspend active sessions and provider assignments and write an audit event (`DATA_PRIVACY.md` §8.1).
 
 ### 8.2 Consent
 
 | Method | Route | Purpose | Requirements |
 |---|---|---|---|
 | `GET` | `/api/v1/me/consents` | List the caller's consent records | FR-003, FR-004 |
-| `POST` | `/api/v1/me/consents` | Grant consent for a documented purpose and data category | FR-003, FR-004, DP-001 |
+| `POST` | `/api/v1/me/consents` | Grant consent for a documented purpose (`code` + `version`) | FR-003, FR-004, DP-001 |
 | `POST` | `/api/v1/me/consents/{consentId}/withdraw` | Withdraw a consent record | FR-003, DP-007 |
 
-Consent actions must be idempotent where practical and must create audit events. Withdrawal must define how it affects future collection, processing, stored derived outputs, and existing provider access.
+Per [ADR-015](../06-technical-decisions/DECISIONS.md), the canonical versioned (`v1`) `consent_purpose.code` values enforced by the backend are: `health_input_storage`, `preventive_risk_calculation`, `wellbeing_check_ins`, `environmental_context`, `facility_location_search`, `provider_data_sharing`, `notifications_delivery`, `report_generation`, and `assistant_conversations` (approved for synthetic development/testing; production wording tracked under `OPEN-007`/`OPEN-008`).
+
+Consent actions must be idempotent where practical and must create audit events. Withdrawing a purpose immediately blocks future processing and provider access under that purpose (`ACCESS_CONTROL.md` §8.1).
 
 ### 8.3 Health inputs and check-ins
 
 | Method | Route | Purpose | Requirements |
 |---|---|---|---|
-| `GET` | `/api/v1/me/health-inputs` | List the caller's permitted inputs | FR-007, FR-008 |
-| `POST` | `/api/v1/me/health-inputs` | Submit an approved self-reported input | FR-007, FR-008, FR-009 |
-| `PATCH` | `/api/v1/me/health-inputs/{inputId}` | Correct an editable input | FR-005, FR-008 |
-| `POST` | `/api/v1/me/check-ins` | Submit an approved wellbeing check-in | FR-007, FR-024 |
+| `GET` | `/api/v1/me/health-inputs` | List the caller's permitted inputs (`active` by default; optional history filter) | FR-007, FR-008 |
+| `POST` | `/api/v1/me/health-inputs` | Submit an approved self-reported input (requires `health_input_storage` consent) | FR-007, FR-008, FR-009 |
+| `PATCH` | `/api/v1/me/health-inputs/{inputId}` | Correct an editable input via immutable supersession (`ADR-017`) | FR-005, FR-008 |
+| `GET` | `/api/v1/me/check-ins` | List the caller's structured wellbeing check-ins (gated by `FEATURE_CHECKINS_ENABLED`) | FR-007, FR-036 |
+| `POST` | `/api/v1/me/check-ins` | Submit an approved wellbeing check-in (requires `wellbeing_check_ins` consent; gated by `FEATURE_CHECKINS_ENABLED`) | FR-007, FR-024 |
 
-Input payloads must use an allowlist of fields and value ranges. The API must reject unapproved clinical fields rather than silently accepting arbitrary health data.
+Input payloads must use an allowlist of fields and value ranges (`ADR-010`). The API must reject unapproved clinical fields (`422 VALIDATION_ERROR`) rather than silently accepting arbitrary health data. Per [ADR-017](../06-technical-decisions/DECISIONS.md), `PATCH /api/v1/me/health-inputs/{inputId}` never overwrites a row in place: inside one transaction it transitions the target record to `status: "superseded"` and inserts a new `status: "active"` record referencing `supersedes_input_id`.
 
 ### 8.4 Risk assessments
 
@@ -251,80 +257,111 @@ Input payloads must use an allowlist of fields and value ranges. The API must re
 |---|---|---|---|
 | `GET` | `/api/v1/me/risk-assessments` | List the caller's risk indicators | FR-011, FR-012, FR-016 |
 | `GET` | `/api/v1/me/risk-assessments/{assessmentId}` | View one indicator and its explanation | FR-012, FR-013, FR-017 |
-| `POST` | `/api/v1/me/risk-assessments` | Request an approved risk calculation | FR-016, FR-018, FR-019 |
+| `POST` | `/api/v1/me/risk-assessments` | Request an approved risk calculation (requires `preventive_risk_calculation` consent) | FR-016, FR-018, FR-019 |
 
-Proposed response shape:
+Standardized response shape ([ADR-014](../06-technical-decisions/DECISIONS.md), [ADR-015](../06-technical-decisions/DECISIONS.md)):
 
 ```json
 {
   "data": {
     "id": "assessment-id",
-    "use_case": "approved-use-case",
+    "use_case": "lifestyle_ncd_preventive",
     "status": "complete",
     "level": "low",
     "calculated_at": "2026-11-14T12:30:00Z",
-    "rule_set_version": "rules-v1",
+    "rule_model_version": "rules-v1.0.0",
     "contributing_factors": [],
-    "limitations": ["This is a preventive risk indicator, not a diagnosis."],
+    "limitations": [
+      "This is a preventive risk indicator based on self-reported lifestyle information, not a medical diagnosis."
+    ],
     "recommended_next_steps": [],
     "provenance": {
       "input_snapshot_id": "snapshot-id"
     }
+  },
+  "meta": {
+    "request_id": "request-id"
   }
 }
 ```
 
-The API must not return hidden model reasoning, unrestricted prompt content, or data the caller is not authorized to see. If required inputs are missing or stale, the response must communicate that the result is unavailable or limited.
+The API must not return hidden model reasoning, raw numerical score totals, unrestricted prompt content, or data the caller is not authorized to see. If required inputs are missing or stale, the response returns `"status": "limited"` and `"level": null`—never `"low"` (`ADR-003`, `ADR-014`).
 
-### 8.5 Facilities and providers
+### 8.5 Facilities, environmental context, and provider portal
 
 | Method | Route | Purpose | Requirements |
 |---|---|---|---|
-| `GET` | `/api/v1/facilities` | Search approved facilities | FR-026, FR-027 |
-| `GET` | `/api/v1/facilities/{facilityId}` | View a facility and its services | FR-026, FR-027 |
+| `GET` | `/api/v1/facilities` | Search approved facilities (optional bounded location with `facility_location_search` consent) | FR-026, FR-027, FR-028 |
+| `GET` | `/api/v1/facilities/{facilityId}` | View a facility, its services, source, and `last_verified_at` | FR-026, FR-027 |
 | `GET` | `/api/v1/providers` | Search providers using approved public criteria | FR-026, FR-031 |
 | `POST` | `/api/v1/referrals` | Create an approved referral or contact request | FR-029 |
+| `GET` | `/api/v1/environment/observations` | View normalized area-level environmental observations (requires `environmental_context` consent when tied to user area) | FR-011, DP-001 |
+| `GET` | `/api/v1/provider/patients` | List citizens actively assigned to the authenticated provider/CHW with active `provider_data_sharing` consent (`FEATURE_PROVIDER_PORTAL_ENABLED`) | FR-031 |
+| `GET` | `/api/v1/provider/patients/{citizenId}/health-inputs` | View scoped health inputs with provenance and age (`FEATURE_PROVIDER_PORTAL_ENABLED`) | FR-031, FR-032 |
+| `GET` | `/api/v1/provider/patients/{citizenId}/risk-assessments` | View scoped risk assessments, `rule_model_version`, and limitations (`FEATURE_PROVIDER_PORTAL_ENABLED`) | FR-031, FR-032 |
+| `POST` | `/api/v1/provider/patients/{citizenId}/follow-ups` | Record a permitted follow-up action without altering citizen inputs or AI outputs (`FEATURE_PROVIDER_PORTAL_ENABLED`) | FR-033 |
 
-Location filters must be explicit and bounded. The API must not expose a citizen's precise location to a facility or provider unless the user authorizes that use.
+Location filters must be explicit and bounded. Unassigned or unconsented `/api/v1/provider/patients/{citizenId}/*` requests always return `404 NOT_FOUND` (`ADR-004`).
 
-### 8.6 Notifications and reports
+### 8.6 Notifications, trends, and reports
 
 | Method | Route | Purpose | Requirements |
 |---|---|---|---|
 | `GET` | `/api/v1/me/notification-preferences` | View notification settings | FR-015 |
-| `PATCH` | `/api/v1/me/notification-preferences` | Update notification settings | FR-015 |
+| `PATCH` | `/api/v1/me/notification-preferences` | Update notification settings (requires `notifications_delivery` consent to enable) | FR-015 |
+| `GET` | `/api/v1/me/notifications` | List in-app notifications and delivery statuses | FR-015 |
+| `POST` | `/api/v1/me/notifications/{notificationId}/read` | Mark an in-app notification as read | FR-015 |
+| `GET` | `/api/v1/me/trends` | View approved historical health-input and risk-indicator trends over a selected period | FR-011, FR-036 |
 | `GET` | `/api/v1/me/reports` | List available reports | FR-037 |
-| `POST` | `/api/v1/me/reports` | Request a report | FR-037, NFR-008 |
-| `GET` | `/api/v1/me/reports/{reportId}` | View report metadata or download authorization | FR-037 |
+| `POST` | `/api/v1/me/reports` | Request a report (requires `report_generation` consent) | FR-037, NFR-008 |
+| `GET` | `/api/v1/me/reports/{reportId}` | View report metadata and short-lived private object-storage download URL (`ADR-017`) | FR-037 |
 
-Report generation may be asynchronous. A request should return a job or report status rather than blocking indefinitely.
+Report generation may run asynchronously via BullMQ, storing artifacts in private S3-compatible object storage (MinIO in local/test) and issuing short-lived presigned URLs only after ownership/grant verification (`ADR-017`).
 
 ### 8.7 Assistant and consultations
 
-These routes remain subject to safety and workflow approval:
+These routes enforce runtime circuit breakers (`FEATURE_ASSISTANT_ENABLED` and `FEATURE_PROVIDER_PORTAL_ENABLED` per [ADR-017](../06-technical-decisions/DECISIONS.md)):
 
 | Method | Route | Purpose | Requirements |
 |---|---|---|---|
-| `POST` | `/api/v1/assistant/conversations` | Start an approved conversation | FR-021, AI-001 |
-| `POST` | `/api/v1/assistant/conversations/{id}/messages` | Submit an approved user message | FR-021, AI-002 |
-| `POST` | `/api/v1/consultations` | Request an approved provider workflow | FR-029, FR-034 |
+| `GET` | `/api/v1/assistant/conversations` | List the caller's active assistant conversations | FR-021, AI-001 |
+| `POST` | `/api/v1/assistant/conversations` | Start an approved conversation (requires `assistant_conversations` consent) | FR-021, AI-001 |
+| `GET` | `/api/v1/assistant/conversations/{id}` | Retrieve bounded conversation turns | FR-021, AI-002 |
+| `POST` | `/api/v1/assistant/conversations/{id}/messages` | Submit a user message through deterministic safety/crisis screening | FR-021, FR-023, FR-024, AI-002 |
+| `GET` | `/api/v1/consultations` | List consultations visible to the authenticated citizen or assigned provider | FR-029, FR-034 |
+| `POST` | `/api/v1/consultations` | Request or initiate an approved consultation workflow | FR-029, FR-034 |
+| `PATCH` | `/api/v1/consultations/{consultationId}` | Update consultation status within permitted role/assignment rules | FR-029, FR-034 |
 
-The API must apply input and output safety checks, minimize stored conversation data, and route emergency or self-harm signals to the reviewed escalation flow.
+The API must apply deterministic pre- and post-model safety checks, minimize stored conversation data, and route emergency or self-harm signals immediately to the reviewed escalation flow (`ADR-006`).
+
+### 8.8 Administrative configuration and audit routes
+
+Strictly restricted to `platform_admin` with **zero** endpoints or fields exposing citizen health inputs, check-ins, risk assessments, or assistant messages (`FR-035`, `ADR-004`, `ADR-015`):
+
+| Method | Route | Purpose | Requirements |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/users` | List application accounts (`user_accounts` metadata and roles only) | FR-035 |
+| `PATCH` | `/api/v1/admin/users/{userId}/status` | Suspend or reactivate an account and assign non-self roles (separation of duties) | FR-035, FR-038 |
+| `POST` | `/api/v1/admin/provider-assignments` | Create a scoped, time-bounded provider assignment | FR-031, FR-035, FR-038 |
+| `PATCH` | `/api/v1/admin/provider-assignments/{assignmentId}` | End or update a provider assignment | FR-031, FR-035, FR-038 |
+| `GET` | `/api/v1/admin/consent-purposes` | View registered consent purpose definitions and versions | FR-004, FR-035 |
+| `GET` | `/api/v1/admin/rule-versions` | View registered `rule_model_version` governance records | AI-001, FR-035 |
+| `GET` | `/api/v1/admin/audit-events` | Query redacted append-only audit events (`audit_event` allowlist only) | FR-038, FR-039 |
 
 ## 9. Internal AI-service contract
 
-The core API calls the AI service through an authenticated internal interface. The internal request must contain:
+The core API calls the AI service through an authenticated internal interface (`X-Internal-Service-Token` verified in constant time plus `X-Request-Id` propagation, with a `<= 2000ms` synchronous timeout for Slice 1 per [ADR-013](../06-technical-decisions/DECISIONS.md)). The internal request must contain:
 
-- A request ID and service-to-service identity
-- Approved use-case identifier and version
-- Minimum necessary authorized input snapshot
+- A request ID and service-to-service identity (`X-Internal-Service-Token`)
+- Approved `use_case_code` (e.g., `"lifestyle_ncd_preventive"`) and `rule_model_version` (e.g., `"rules-v1.0.0"`) (`ADR-015`)
+- Minimum necessary authorized input snapshot (zero direct PII)
 - Consent and authorization context already checked by the core API
 - Timeout and trace metadata
 
 The AI service response must contain:
 
-- Status and output version
-- Structured result or a safe failure
+- Status (`complete` | `limited` | `failed`) and `rule_model_version`
+- Structured result (`level: "low" | "moderate" | "high" | null`) or a safe failure
 - Input and model/rule provenance
 - Limitations and safety metadata
 - No credentials or unrestricted raw records
@@ -347,13 +384,13 @@ Keys must not contain personal or health information.
 
 Audit events are created for:
 
-- Sensitive record access
+- Sensitive record access (including denied cross-user or unassigned attempts)
 - Consent grant and withdrawal
-- Profile or health-input changes
-- Risk calculations and rule-version use
-- Provider actions
-- Administrative access and configuration changes
-- Report generation and sharing
+- Profile or health-input changes (including supersession)
+- Risk calculations and `rule_model_version` use
+- Provider follow-up and consultation actions
+- Administrative access, assignment changes, and configuration changes
+- Report generation, data exports, and account-deletion requests
 
 Audit data should contain actor, action, resource type, resource identifier, time, outcome, and request ID. It must not contain passwords, access tokens, raw prompts, or unnecessary health payloads.
 
@@ -370,18 +407,19 @@ Every approved endpoint requires:
 - Integration or contract tests for external dependencies
 - Audit-event tests for sensitive actions
 
-Critical first-release journeys require end-to-end coverage from authenticated client request through the core API and persistence boundary.
+Critical first-release journeys require end-to-end coverage from authenticated request through the core API, `ai-services/`, and persistence boundary.
 
-## 13. Open API decisions
+## 13. Open and resolved API decisions
 
-- Final identity provider and token claims
-- Exact resource names and route shapes
-- Whether profile resources are named `users`, `profiles`, or another domain name
-- First-release health-input fields and validation rules
-- First-release risk use cases and response levels
-- Synchronous versus asynchronous risk-calculation behavior
-- Provider and facility data ownership and update process
-- Notification delivery channels and retry policy
-- Report file format and storage policy
-- Public API gateway, hostname, and deployment topology
-- Rate-limit values and service-level targets
+### Resolved for Phase 1 & backend onboarding
+- **Identity provider and token claims:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md)** — standard OIDC/JWT validation boundary (`iss`, `aud`, `exp`, `sub`, signature) with Supabase Auth cloud default and offline OIDC-compatible test signer; `support_operator` removed.
+- **Account table vs. route naming:** **Resolved in [ADR-012](../06-technical-decisions/DECISIONS.md)** — `user_accounts` database table with `/api/v1/me` and `/api/v1/me/profile` public routes.
+- **First-release health-input fields, use case, and version field:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md) & [ADR-015](../06-technical-decisions/DECISIONS.md)** — `lifestyle_ncd_preventive` with `rule_model_version: "rules-v1.0.0"` and four allowlisted inputs (`max_age_hours: 720`).
+- **Response risk levels:** **Resolved in [ADR-014](../06-technical-decisions/DECISIONS.md)** — discrete `low | moderate | high`, and `null` when `status` is `limited` or `failed`.
+- **Synchronous vs. asynchronous risk calculation:** **Resolved in [ADR-013](../06-technical-decisions/DECISIONS.md)** — synchronous internal HTTP call (`<= 2000ms` timeout, `X-Internal-Service-Token`) for citizen-triggered Slice 1 calculations; BullMQ retained for async batch/report jobs.
+- **Health-input correction, runtime gates, and report storage:** **Resolved in [ADR-017](../06-technical-decisions/DECISIONS.md)** — immutable supersession (`supersedes_input_id`), runtime circuit breakers (`FEATURE_*`), and private S3-compatible object storage (MinIO locally) with short-lived presigned URLs.
+
+### Remaining pre-production decisions
+- Provider portal production activation (`OPEN-009` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Authoritative Rwanda facility, weather, map, and external notification vendor contracts (`OPEN-010`)
+- Production API gateway, hostname, cloud hosting topology, and production rate-limit / SLA targets (`OPEN-012`)

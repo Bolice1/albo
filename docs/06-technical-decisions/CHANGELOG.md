@@ -12,15 +12,38 @@ Every significant change to requirements, APIs, database schemas, security/priva
 
 ---
 
-## [Unreleased — Approved Documentation & Engineering Contract Baseline]
+## [Unreleased — Backend & AI Services Onboarding Complete (`backend/` + `ai-services/`)]
 
-**Implementation status:** All 6 documentation folders (`01` through `06`) are approved as active engineering contracts; application code implementation has not started yet (ready for Phase 1 foundation and the first vertical slice).
+**Implementation status:** All backend (`backend/`) and AI-service (`ai-services/`) domains, PostgreSQL/PostGIS migrations, BullMQ background workers, 7 pre-release AI safety evaluation suites, authorization/IDOR/consent/redaction integration suites, multi-stage non-root Docker packaging, and GitHub Actions CI are **implemented and passing** (`frontend/` deferred per `ADR-016`).
 
-### 2026-11-25 — Documentation baseline approval across `01` through `06`
+### 2026-11-26 — Complete Backend (`backend/`) and AI Services (`ai-services/`) Phased Implementation
+
+#### Added
+- **`ai-services/` (Python 3.12 + `uv` + FastAPI):**
+  - Core infrastructure (`app/config.py`, `app/middleware.py`, `app/errors.py`, `app/logging.py`, `app/contracts/`): fail-fast settings validation, `X-Request-Id` propagation, constant-time `hmac.compare_digest` `X-Internal-Service-Token` verification, strict `extra="forbid"` Pydantic v2 schemas, and zero-value-leak error/log redaction (`T-017`).
+  - Deterministic risk engine (`data_processing/`, `risk_engine/`, `model_adapters/`): wall-clock-independent completeness/range/freshness validation, pure 8-step evaluation pipeline, active `lifestyle_ncd_preventive` (`rules-v1.0.0`) baseline, 4 governance-gated draft rule sets (`malaria_exposure_preventive`, `respiratory_air_quality_preventive`, `water_hygiene_preventive`, `wellbeing_checkin_screener`), and uniform `RiskModelAdapter` / `TemplateGuidedAssistantAdapter` (`kb-v1.0.0`) interfaces.
+  - Safety guardrails & 7 pre-release evaluation suites (`app/safety/`, `evaluation/`, `tests/`): two-category deterministic crisis/emergency screener (`FR-024`), prompt-injection & diagnostic/prescription pre/post guards (`HAZ-01`–`HAZ-09`), and 138 passing `pytest` tests across all 7 required safety suites.
+- **`backend/` (Bun + NestJS Modular Monolith + Prisma/PostGIS + BullMQ):**
+  - Core platform (`src/config/`, `src/common/`, `src/database/`, `src/health/`, `prisma/`): Zod startup fail-fast validation, `AsyncLocalStorage` request context, API §6 `GlobalExceptionFilter`, redacted `ValidationPipe`, `EnvelopeInterceptor`, opaque cursor pagination, SHA-256 `IdempotencyInterceptor`, Redis Lua `RateLimitGuard`, `/health/live` & `/health/ready`, normalized 27-table PostgreSQL/PostGIS migration (stored generated `geography(Point, 4326)` + GIST index, `risk_assessments_status_level_chk` check constraint, append-only `audit_events` trigger), and non-production synthetic baseline seeding (`bun run seed:synthetic`).
+  - Domain modules (`src/modules/` & `src/integrations/` & `src/jobs/`):
+    - `identity-access`, `consent`, `audit`: OIDC/JWT verification + offline test JWT signer (`ADR-011`), 8-step `AccessPolicyService` (`404 NOT_FOUND` cross-user isolation), `/api/v1/me/*` (profile, data exports, account deletion requests), `/api/v1/me/consents/*`, `/api/v1/admin/*` (strict separation of duties & zero admin health-record access), and append-only redacted `AuditService`.
+    - `health-profile`, `environment`, `risk-assessment`: allowlisted health inputs (`HEALTH_INPUT_FIELD_ALLOWLIST`), immutable supersession (`PATCH /api/v1/me/health-inputs/:id`), safety-screened `/api/v1/me/check-ins` with synchronous crisis escalation, coarse regional `/api/v1/environment` + sandbox weather adapter, PII-free `input_snapshots`, and `<= 2000ms` synchronous + queued `ai-services` risk orchestration degrading safely to `limited`/`failed` (`level: null`).
+    - `facilities-care`, `notifications-reports`, `assistant`, `jobs`: PostGIS `ST_DWithin` proximity search, map directions fallback, public provider directory, referrals & consultations, `FEATURE_PROVIDER_PORTAL_ENABLED`-gated Provider Portal (`FR-031`–`FR-034`), quiet-hour zero-PHI notifications, `/api/v1/me/trends`, private S3/MinIO reports with `<= 300s` presigned URLs & `ReportAccess`, grounded `/api/v1/assistant/conversations` with deterministic DB facility injection (`HAZ-04`), and consent-revalidating BullMQ workers (`src/worker.ts`).
+- **Infrastructure & CI (`docker-compose.yml`, `infrastructure/`, `.github/workflows/ci.yml`, `.gitleaks.toml`):** Multi-stage non-root `Dockerfile`s (`USER albo`), `edge` + `private` Docker network isolation, Gitleaks config, and 5-job GitHub Actions CI workflow.
+
+---
+
+### 2026-11-25 — Phase 1 contract synchronization, backend-only onboarding boundary, and documentation baseline approval (`ADR-015`–`ADR-017`)
+
+#### Added
+- **[DECISIONS.md](DECISIONS.md):**
+  - `ADR-015`: Standardized `rule_model_version` (`"rules-v1.0.0"`), use-case code `lifestyle_ncd_preventive`, nine canonical `v1` `consent_purpose.code` identifiers for synthetic development/testing, role-scoping wording across `/me/*`, `/admin/*`, and gated `/provider/*`, resolved open-decision cross-links, phase cross-reference fixes, and neutral `2`–`4` fruit/veg servings/day rule-card note (`OPEN-006`).
+  - `ADR-016`: Recorded the backend/AI-only engineering onboarding boundary (`backend/`, `ai-services/`, `infrastructure/`, and GitHub Actions CI, deferring `frontend/` to a separate track) and adopted **Bun** (`bun.lock`, `bun install --frozen-lockfile`) for `backend/` and **Python 3.12 + `uv`** (`uv.lock`) for `ai-services/`.
+  - `ADR-017`: Recorded runtime governance circuit breakers (`FEATURE_PROVIDER_PORTAL_ENABLED`, `FEATURE_ASSISTANT_ENABLED`, `FEATURE_CHECKINS_ENABLED`, `APPROVED_RISK_RULE_VERSIONS`), immutable health-input correction supersession (`supersedes_input_id`), typed synthetic/sandbox integration adapters, and private S3/MinIO presigned-URL report storage.
 
 #### Updated
-- **All documentation status headers (`docs/01-*` through `docs/06-*`, `docs/README.md`, `docs/PROJECT_STATUS.md`, and root `README.md`):** Marked all 26 domain and governance documents as **Approved** and removed draft / proposed-draft document status labels.
-- **[DECISIONS.md](DECISIONS.md):** Promoted `ADR-004`, `ADR-008`, and `ADR-009` from `Proposed` to `Accepted` alongside the approved documentation baseline (`ADR-001` through `ADR-014` now all `Accepted`).
+- **Synchronized contracts across `docs/01-*` through `docs/05-*` and `docs/superpowers/specs/`:** Updated `API_DOCUMENTATION.md`, `CODING_STANDARDS.md`, `DEPLOYMENT.md`, `TECH_STACK.md`, `ARCHITECTURE.md`, `SYSTEM_DESIGN.md`, `DATABASE_SCHEMA.md`, `INTEGRATIONS.md`, `ACCESS_CONTROL.md`, `DATA_PRIVACY.md`, `SECURITY.md`, `AI_ARCHITECTURE.md`, `AI_SAFETY.md`, `RISK_SCORING.md`, `AI_ASSISTANT.md`, `MODEL_DOCUMENTATION.md`, `TESTING_STRATEGY.md`, `ROADMAP.md`, and `2026-11-19-phase-1-engineering-foundation-design.md` to align with `ADR-015`–`ADR-017`.
+- **All documentation status headers (`docs/01-*` through `docs/06-*`, `docs/README.md`, `docs/PROJECT_STATUS.md`, and root `README.md`):** Marked all 26 domain and governance documents as **Approved** and promoted `ADR-004`, `ADR-008`, and `ADR-009` to `Accepted` (`ADR-001` through `ADR-017` now all `Accepted`).
 
 ---
 

@@ -16,11 +16,13 @@ Each phase has:
 
 Work should move to the next phase only when its gate is reviewed and accepted. A feature that is not required for the current phase remains documented as future scope rather than entering implementation informally.
 
+> **Phase-numbering note ([ADR-015](../06-technical-decisions/DECISIONS.md)):** `Phase 0` through `Phase 7` in this document denote **product and engineering delivery phases**. By contrast, the `"Phase 1–3"` labels in [AI_ARCHITECTURE.md](../04-artificial-intelligence/AI_ARCHITECTURE.md) §5 (and [MODEL_DOCUMENTATION.md](../04-artificial-intelligence/MODEL_DOCUMENTATION.md)) denote **AI capability evolution stages** (Stage 1 deterministic rules → Stage 2 gated assistant → Stage 3 validated ML models), and `Phase 2`–`Phase 4` in [PROJECT_SCOPE.md](PROJECT_SCOPE.md) §5 group post-MVP scope horizons.
+
 ## 2. Current position
 
 **Phase 0 — Documentation and product foundation (Approved) → Phase 1 — Architecture and engineering foundation**
 
-The repository's foundational product, architecture, security, privacy, AI, development-standards, and technical-decision documentation is approved. The current focus is completing the Phase 1 engineering foundation and delivering the first citizen vertical slice while resolving remaining pre-production decisions (`OPEN-006` through `OPEN-012`).
+The repository's foundational product, architecture, security, privacy, AI, development-standards, and technical-decision documentation is approved (`ADR-001` through `ADR-017`). Per [ADR-016](../06-technical-decisions/DECISIONS.md), initial engineering onboarding delivers `backend/` (Bun + NestJS), `ai-services/` (Python 3.12 + `uv` + FastAPI), `infrastructure/`, and GitHub Actions CI—deferring `frontend/` to a separate onboarding track—while remaining pre-production governance gates are tracked under `OPEN-006` through `OPEN-012`.
 
 ## 3. Roadmap phases
 

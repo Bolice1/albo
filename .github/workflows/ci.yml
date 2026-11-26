@@ -1,0 +1,182 @@
+name: Albo Backend & AI Services CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - Albert
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  ai-services:
+    name: AI Services (Ruff, Mypy Strict, Pytest & 7 Safety Suites)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-services
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.13.9"
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: uv sync --frozen
+      - name: Lint & format check (Ruff)
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Strict static type check (Mypy)
+        run: uv run mypy --strict app data_processing risk_engine model_adapters evaluation
+      - name: Unit, contract & 7 pre-release AI safety evaluation suites
+        run: uv run pytest -v
+
+  migrations:
+    name: Database Migration Verification (PostGIS 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres # ggignore
+          POSTGRES_DB: albo_ci_migrations
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -h 127.0.0.1 -U postgres -d albo_ci_migrations"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.14"
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Apply Prisma migrations & check status
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/albo_ci_migrations?schema=public # ggignore
+        run: |
+          bun x prisma migrate deploy
+          bun x prisma migrate status
+
+  backend:
+    name: Core API & Worker (Bun Lint, Typecheck, Build & Full Integration Matrix)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres # ggignore
+          POSTGRES_DB: albo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -h 127.0.0.1 -U postgres -d albo_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.13.9"
+          python-version: "3.12"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.14"
+      - name: Start MinIO S3 container for report storage integration tests
+        run: |
+          docker run -d --name albo-ci-minio \
+            -p 127.0.0.1:9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            elestio/minio:latest server /data # ggignore
+          for i in $(seq 1 25); do
+            curl -fsS http://127.0.0.1:9000/minio/health/live && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:9000/minio/health/live
+      - name: Install AI service locked dependencies
+        working-directory: ai-services
+        run: uv sync --frozen
+      - name: Install backend dependencies & generate Prisma client
+        working-directory: backend
+        run: |
+          bun install --frozen-lockfile
+          bun run prisma:generate
+      - name: Lint, format check, strict typecheck & build
+        working-directory: backend
+        run: |
+          bun run format:check
+          bun run lint
+          bun run typecheck
+          bun run build
+      - name: Deploy migrations & run unit + authorization/IDOR/consent/safety integration suite
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/albo_test?schema=public # ggignore
+          REDIS_URL: redis://127.0.0.1:6379/1
+          S3_ENDPOINT: http://127.0.0.1:9000
+          S3_ACCESS_KEY: minioadmin
+          S3_SECRET_KEY: minioadmin # ggignore
+        run: |
+          (
+            cd ai-services
+            ENVIRONMENT=test \
+              INTERNAL_SERVICE_TOKEN=example_placeholder_internal_service_token_test_only \
+              ASSISTANT_ENABLED=true \
+              CHECKIN_SAFETY_ENABLED=true \
+              ENABLED_RULE_VERSIONS="lifestyle_ncd_preventive:rules-v1.0.0,malaria_exposure_preventive:rules-v0.1.0-draft,respiratory_air_quality_preventive:rules-v0.1.0-draft,water_hygiene_preventive:rules-v0.1.0-draft,wellbeing_checkin_screener:rules-v0.1.0-draft" \
+              uv run uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8099 > /tmp/ai-services.log 2>&1
+          ) & # ggignore
+          AI_PID=$!
+          trap 'kill "$AI_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 25); do
+            curl -fsS http://127.0.0.1:8099/internal/v1/health && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8099/internal/v1/health
+          cd backend
+          bun x prisma migrate deploy
+          bun run test
+
+  images:
+    name: Hardened Multi-Stage Docker Image Builds
+    runs-on: ubuntu-latest
+    needs: [secrets, ai-services, migrations, backend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ai-services non-root image
+        run: docker build --file ai-services/Dockerfile ai-services -t albo-ai-services:ci
+      - name: Build backend (core-api & job-worker) non-root image
+        run: docker build --file backend/Dockerfile backend -t albo-backend:ci

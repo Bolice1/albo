@@ -1,0 +1,12 @@
+version: 2
+
+secret:
+  ignored-paths:
+    - ".env.example"
+    - "**/.env.example"
+    - "docker-compose.yml"
+    - "infrastructure/docker/**"
+    - ".github/workflows/ci.yml"
+    - "backend/test/**"
+    - "ai-services/tests/**"
+    - "ai-services/evaluation/**"

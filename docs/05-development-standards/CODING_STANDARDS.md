@@ -8,10 +8,10 @@
 
 This document defines the coding standards, structural conventions, type-safety rules, and security/privacy guardrails for all human developers and AI coding agents working on Albo across:
 
-- **`frontend/`** — Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
-- **`backend/`** — NestJS modular monolith, TypeScript, PostgreSQL/PostGIS, Redis/BullMQ
-- **`ai-services/`** — Python 3.11+, FastAPI, Pydantic, deterministic risk engine, safety filters, and future model adapters
-- **`infrastructure/`** — Docker, CI/CD, and local development configuration
+- **`frontend/`** — Next.js, React, TypeScript, Tailwind CSS, shadcn/ui *(deferred to a separate frontend onboarding track per [ADR-016](../06-technical-decisions/DECISIONS.md))*
+- **`backend/`** — NestJS modular monolith, TypeScript, Prisma ORM, PostgreSQL/PostGIS, Redis/BullMQ (managed and run with **Bun** per [ADR-016](../06-technical-decisions/DECISIONS.md))
+- **`ai-services/`** — Python 3.12 (`uv`), FastAPI, Pydantic v2, deterministic risk engine, safety filters, and future model adapters
+- **`infrastructure/`** — Docker, GitHub Actions CI, and local development configuration
 
 Every contributor and AI agent must follow both [AGENTS.md](../../AGENTS.md) and this document. When implementation and documentation disagree, stop and resolve the discrepancy in the documentation before writing code.
 
@@ -19,7 +19,7 @@ Every contributor and AI agent must follow both [AGENTS.md](../../AGENTS.md) and
 
 1. **Documentation-driven contracts.** Do not invent undocumented endpoints, database fields, risk rules, or permissions (AGENTS.md Rule 1). Every feature maps to an approved requirement in [REQUIREMENTS.md](../01-project-foundation/REQUIREMENTS.md).
 2. **Respect component boundaries.**
-   - **`frontend/`** owns presentation, accessibility, form state, and client navigation. It never makes trusted authorization, consent, or risk-scoring decisions (ARCHITECTURE §4, §6).
+   - **`frontend/`** *(when onboarded per `ADR-016`)* owns presentation, accessibility, form state, and client navigation. It never makes trusted authorization, consent, or risk-scoring decisions (ARCHITECTURE §4, §6).
    - **`backend/`** owns public API endpoints, token validation, authorization, consent checks, business workflows, durable persistence, external-provider adapters, and audit events.
    - **`ai-services/`** owns stateless rule evaluation, weighted scoring, data preprocessing, safety classification, and model adapters. It never authenticates end users, checks consent, or queries arbitrary database tables (ARCHITECTURE §9).
 3. **Strict typing at every boundary.** TypeScript runs with `"strict": true` (no implicit `any`); Python runs with strict Pydantic v2 models and `mypy`/`pyright` type checking.
@@ -30,10 +30,10 @@ Every contributor and AI agent must follow both [AGENTS.md](../../AGENTS.md) and
 
 ## 3. Repository layout and file naming
 
-Following SYSTEM_DESIGN §4:
+Following SYSTEM_DESIGN §4 (note: `frontend/` is deferred during backend/AI onboarding per [ADR-016](../06-technical-decisions/DECISIONS.md)):
 
 ```text
-frontend/
+frontend/                 (Deferred to separate frontend onboarding track per ADR-016)
   src/
     app/                  Next.js App Router pages and layouts
     components/           Reusable accessible UI components (shadcn/ui + domain components)
@@ -41,23 +41,25 @@ frontend/
     lib/                  Typed API client, date/format utilities, constants
   tests/                  Component and Playwright E2E tests
 
-backend/
+backend/                  (Bun package — bun.lock)
   src/
     modules/
       identity-access/    Auth token mapping, roles, organizations, assignments, policy guard
       consent/            Consent purposes, records, withdrawal logic
-      health-profile/     Allowlisted health inputs and wellbeing check-ins
-      risk-assessment/    Input snapshots, AI-service orchestration, assessment storage
-      facilities-care/    Facilities, services, geospatial queries, referrals
+      health-profile/     Allowlisted health inputs (immutable supersession) and wellbeing check-ins
+      risk-assessment/    Input snapshots, AI-service orchestration, assessment storage, trends
+      facilities-care/    Facilities, services, geospatial queries, referrals, provider portal, consultations
       notifications-reports/
+      assistant/          Safety-gated assistant conversation orchestration
+      admin/              Account, assignment, config, and redacted audit routes (zero health-record access)
       audit/              Append-oriented audit event writer
     common/               Guards, interceptors, error filter, redacted logger, request-ID middleware
-    database/             ORM schema, reviewed migrations, synthetic seed scripts
-    integrations/         External adapters (identity, weather, maps, notifications, ai-service client)
+    database/             Prisma schema, reviewed migrations, synthetic seed scripts
+    integrations/         External adapters (identity, weather, maps, notifications, storage, ai-service client)
     jobs/                 BullMQ queue processors
-  test/                   Unit, integration, and authorization boundary tests
+  test/                   Unit, integration, contract, and authorization boundary tests
 
-ai-services/
+ai-services/              (Python 3.12 + uv — uv.lock)
   app/
     main.py
     contracts/            Pydantic request/response schemas
@@ -77,8 +79,8 @@ ai-services/
 | React components (Next.js) | `PascalCase.tsx` for components, `kebab-case.ts` for utilities/hooks | `RiskIndicatorCard.tsx`, `use-consent-status.ts` |
 | Python modules & functions | `snake_case.py` (PEP 8) | `evaluate_lifestyle_rules.py`, `check_input_freshness()` |
 | Classes, types, interfaces, Pydantic models | `PascalCase` | `RiskCalculationRequest`, `ConsentRecord`, `ProviderAssignment` |
-| Constants and environment variables | `UPPER_SNAKE_CASE` | `MAX_PAGE_LIMIT`, `AI_SERVICE_TIMEOUT_MS` |
-| JSON API fields & database columns | `snake_case` (matching API_DOCUMENTATION.md and DATABASE_SCHEMA.md) | `user_account_id`, `rule_set_version`, `contributing_factors`, `calculated_at` |
+| Constants and environment variables | `UPPER_SNAKE_CASE` | `MAX_PAGE_LIMIT`, `AI_SERVICE_TIMEOUT_MS`, `FEATURE_ASSISTANT_ENABLED` |
+| JSON API fields & database columns | `snake_case` (matching API_DOCUMENTATION.md and DATABASE_SCHEMA.md) | `user_account_id`, `rule_model_version`, `contributing_factors`, `calculated_at` |
 | Route paths | Plural `kebab-case` under `/api/v1` | `/api/v1/me/health-inputs`, `/api/v1/me/risk-assessments` |
 
 ## 4. TypeScript and NestJS (`backend/`) standards
@@ -97,12 +99,14 @@ ai-services/
    - Validate all incoming payloads, query filters, and route parameters at the controller boundary using strict schema validation (`class-validator` / `zod` with `whitelist: true` and `forbidNonWhitelisted: true`).
    - Health inputs must validate `field_code`, `unit`, and `value` against the approved allowlist; reject unknown clinical fields with `422 VALIDATION_ERROR` (API §8.3).
    - Map outgoing responses through explicit response DTOs so internal columns are never serialized by accident (T-008).
-5. **Transactions and auditability:**
-   - Wrap multi-step state mutations (e.g., granting/withdrawing consent + writing the `audit_event`, or creating an `input_snapshot` + storing a `risk_assessment`) in a database transaction (ARCHITECTURE §10, NFR-004).
+5. **Transactions, immutable supersession, and auditability:**
+   - Wrap multi-step state mutations (e.g., granting/withdrawing consent + writing the `audit_event`, superseding a corrected `health_input` via `supersedes_input_id` per `ADR-017`, or creating an `input_snapshot` + storing a `risk_assessment`) in a database transaction (ARCHITECTURE §10, NFR-004).
 6. **External adapter isolation:**
-   - All third-party HTTP calls live in `backend/src/integrations/` behind typed adapter interfaces with explicit timeouts, bounded retries, and safe fallback states (INTEGRATIONS §4, §15).
+   - All third-party HTTP calls live in `backend/src/integrations/` behind typed adapter interfaces with explicit timeouts, bounded retries, and safe fallback states (INTEGRATIONS §4, §15, `ADR-017`).
 
 ## 5. Next.js and React (`frontend/`) standards
+
+*(Applies when the `frontend/` track is onboarded per [ADR-016](../06-technical-decisions/DECISIONS.md).)*
 
 1. **Zero trust in client state:**
    - Role checks in the UI are for navigation convenience only; the backend enforces all permissions.
@@ -135,7 +139,7 @@ ai-services/
 
 ## 7. Database and SQL standards
 
-1. **Migrations only:** Schema changes are made exclusively through versioned, reviewed migration files—never via `synchronize: true` or ad-hoc SQL in staging/production (DATABASE_SCHEMA §16).
+1. **Migrations only:** Schema changes are made exclusively through versioned, reviewed Prisma Migrate SQL files (`prisma migrate deploy`, never `db push` or `synchronize: true`) (DATABASE_SCHEMA §16, `ADR-012`).
 2. **Constraints and integrity:**
    - Enforce foreign keys, `NOT NULL`, and `CHECK` constraints for status and level enums at the PostgreSQL layer.
    - Use controlled deletion behavior (`ON DELETE RESTRICT` or explicit soft-status transitions) rather than blind `ON DELETE CASCADE` on sensitive health, consent, and audit records (DATABASE_SCHEMA §13).
@@ -178,18 +182,22 @@ Use a centralized structured JSON logger across `backend/` and `ai-services/`.
 
 ## 9. Linting, formatting, and static analysis
 
-Every change must pass automated checks locally and in CI before merge (TECH_STACK §11):
+Every change must pass automated checks locally and in CI before merge (TECH_STACK §11, [ADR-016](../06-technical-decisions/DECISIONS.md)):
 
-- **TypeScript (`frontend/`, `backend/`):**
-  - `eslint` (including security and React/accessibility rules)
-  - `prettier` for consistent formatting
-  - `tsc --noEmit` with strict mode enabled
-- **Python (`ai-services/`):**
-  - `ruff` (linting and formatting)
-  - `mypy` or `pyright` (strict type checking)
+- **TypeScript (`backend/` via Bun; `frontend/` when onboarded):**
+  - `bun install --frozen-lockfile` for deterministic dependency installation
+  - `bun run lint` (`eslint` including security rules; plus React/accessibility rules in `frontend/` when onboarded)
+  - `bun run format:check` (`prettier`)
+  - `bun run typecheck` (`tsc --noEmit` with strict mode enabled)
+  - `bun run test` (unit and integration suites)
+- **Python (`ai-services/` via Python 3.12 + `uv`):**
+  - `uv sync --frozen` for deterministic dependency installation
+  - `uv run ruff check .` and `uv run ruff format --check .` (linting and formatting)
+  - `uv run mypy` (strict type checking)
+  - `uv run pytest` (unit, contract, safety, and evaluation suites)
 - **Repository-wide:**
   - Secret scanner (e.g., `gitleaks` or `trufflehog`)
-  - Dependency vulnerability scanner (`npm audit` / `osv-scanner` / `pip-audit`)
+  - Dependency vulnerability scanner (`bun audit` / `osv-scanner` / `uv run pip-audit`)
 
 ## 10. Code review checklist
 

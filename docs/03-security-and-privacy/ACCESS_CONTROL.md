@@ -166,7 +166,7 @@ Users in one organization must not see another organization's members, assignmen
 
 ## 8. Consent- and purpose-aware access
 
-- Every access to sensitive data is tied to a consent purpose code and version (DATABASE_SCHEMA §5).
+- Every access to sensitive data is tied to a canonical consent purpose code and version (`v1` codes standardized in [ADR-015](../06-technical-decisions/DECISIONS.md): `health_input_storage`, `preventive_risk_calculation`, `wellbeing_check_ins`, `environmental_context`, `facility_location_search`, `provider_data_sharing`, `notifications_delivery`, `report_generation`, `assistant_conversations`).
 - Consent is checked at the time of processing, not only at collection.
 - Consent checks are performed by the core API before data is sent to the AI service, an external integration, or another person (INTEGRATIONS §16).
 - The AI service receives the consent and authorization context as already-decided metadata; it does not re-decide it.
@@ -198,7 +198,7 @@ No emergency or break-glass access to another person's health data is approved. 
 
 ## 10. Authentication and session requirements
 
-The identity provider remains open (managed OIDC, Keycloak, or a confirmed Supabase Auth boundary — TECH_STACK §7). Whatever is selected must support:
+Per [ADR-011](../06-technical-decisions/DECISIONS.md), the NestJS core API enforces a standards-based OIDC/JWT verification boundary (**Supabase Auth** default for cloud staging/production; offline OIDC-compatible JWT test signer for local development and CI) supporting:
 
 - Signed access tokens validated for signature, issuer, audience, expiry, and required claims.
 - Short-lived access tokens; refresh behavior defined by the provider.
@@ -288,49 +288,50 @@ Tests use synthetic users and data only.
 
 ## 17. First-release access-control scope
 
-Aligned with the first vertical slice in [PROJECT_STATUS.md](../PROJECT_STATUS.md):
+Aligned with [ADR-011](../06-technical-decisions/DECISIONS.md), [ADR-015](../06-technical-decisions/DECISIONS.md), [ADR-017](../06-technical-decisions/DECISIONS.md), and the first vertical slice in [PROJECT_STATUS.md](../PROJECT_STATUS.md):
 
-- Citizen authentication and application-account mapping
-- Citizen-only access to own profile, consent, health input, and risk assessment
-- Consent check before risk calculation
-- Server-side policy module with deny-by-default behavior
-- Audit events for consent changes, risk calculation, and denials
-- Authorization tests proving one citizen cannot access another's data
+- Approved role enum: `citizen`, `provider`, `facility_user`, `community_health_worker`, and `platform_admin` (`support_operator` retired per `ADR-011`)
+- Citizen authentication and `user_accounts` mapping (`ADR-011`, `ADR-012`)
+- Citizen vertical-slice `/api/v1/me/*` routes serving `citizen` callers for own profile, consent, health inputs, risk assessments, trends, notifications, reports, data exports, and deletion requests
+- Administrative `/api/v1/admin/*` routes serving `platform_admin` callers for account status, assignment management, configuration inspection, and redacted audit events—with **zero** automatic health-record access (`FR-035`, `ADR-004`)
+- Provider, community-health-worker, and facility citizen-sharing workflows (`/api/v1/provider/*` and provider-initiated `/api/v1/consultations`) runtime-gated behind `FEATURE_PROVIDER_PORTAL_ENABLED` (default `false` in `production`) pending `OPEN-009` (`ADR-015`, `ADR-017`)
+- Consent check before every sensitive processing or sharing operation (`ADR-015`)
+- Server-side policy module with deny-by-default behavior and `404 NOT_FOUND` cross-user isolation
+- Audit events for consent changes, risk calculations, admin actions, and authorization denials
 
-Provider, facility, community-health-worker, family, and support-operator access are excluded from the first vertical slice until their roles, assignments, and consent purposes are approved.
+Family-member delegation remains excluded until a dedicated delegation model is approved.
 
 ## 18. Acceptance criteria
 
 The access-control design is ready for implementation when:
 
-- The identity provider and token claims are selected.
-- First-release roles and their permissions are approved.
-- Provider-access inclusion for the first release is decided.
-- Consent purposes required for each access path are defined.
-- Consent-withdrawal effects on access are approved.
-- The policy-module design and denial semantics are agreed.
+- The identity provider and token claims are selected (`ADR-011`).
+- First-release roles and their permissions are approved (`ADR-011`, `ADR-015`).
+- Provider-access runtime gating and first-release posture are defined (`ADR-017`, `OPEN-009`).
+- Consent purposes required for each access path are defined (`ADR-015`).
+- Consent-withdrawal effects on access are enforced (`ACCESS_CONTROL.md` §8.1; production retention tracked in `OPEN-008`).
+- The policy-module design and denial semantics are agreed (`ADR-004`).
 - The authorization test matrix is accepted.
 - Decisions are recorded in [DECISIONS.md](../06-technical-decisions/DECISIONS.md).
 
-## 19. Open access-control decisions
+## 19. Open and resolved access-control decisions
 
-- Final identity provider and token claims
-- Final role list and permissions; whether `support_operator` is needed and what it may do
-- Whether provider access is in the first release
-- `facility_user` and `community_health_worker` data reach and group-assignment model
-- Family-member delegation model, if any
-- Who may create and end provider assignments
-- Separation-of-duties rules for administrators
-- Consent-withdrawal effects on existing access and stored outputs
-- Whether facility search requires authentication
-- Multi-factor authentication requirements for privileged roles
-- Row-level security and database-role strategy
-- Emergency or break-glass procedure (currently not approved)
-- Access-review frequency and audit-log access roles
+### Resolved
+- **Identity provider and token claims:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md)** — standard OIDC/JWT validation boundary (Supabase Auth cloud default + offline JWT test signer).
+- **Role enum and active route scoping:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md), [ADR-015](../06-technical-decisions/DECISIONS.md), and [ADR-017](../06-technical-decisions/DECISIONS.md)** — `support_operator` removed; `/me/*` serves citizens, `/admin/*` serves `platform_admin` without health-record access, and provider/CHW/facility workflows are gated behind `FEATURE_PROVIDER_PORTAL_ENABLED`.
+- **Canonical consent purpose codes (`v1`):** **Resolved in [ADR-015](../06-technical-decisions/DECISIONS.md)** for synthetic development and automated testing.
+
+### Remaining pre-production decisions
+- Whether `FEATURE_PROVIDER_PORTAL_ENABLED` is turned on in the first public release (`OPEN-009` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- `facility_user` and `community_health_worker` production group-assignment rules and family-member delegation (`OPEN-009`)
+- Production consent-withdrawal retention and archival effects (`OPEN-008`)
+- Multi-factor authentication enforcement for privileged staff roles in production, optional PostgreSQL RLS, and periodic access-review cadence (`OPEN-012`)
+- Emergency or break-glass procedure (currently **not approved**, `ADR-004`)
 
 ## 20. Resolved documentation discrepancies
 
-| Topic | Observation | Resolution (`2026-11-19`) |
+| Topic | Observation | Resolution (`2026-11-19` / `2026-11-25`) |
 |---|---|---|
 | `support_operator` role | Listed in API §4.2 candidate roles but not defined as an actor in REQUIREMENTS §2 | **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md):** Removed `support_operator` from the role enum (`citizen`, `provider`, `facility_user`, `community_health_worker`, `platform_admin`) |
 | Identity provider | DP-003 references Supabase/Auth-managed identity data while TECH_STACK leaves the provider open | **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md):** Standard OIDC/JWT validation boundary in NestJS with Supabase Auth as the default managed cloud provider and offline OIDC-compatible JWTs for local/CI testing |
+| Active roles in Slice 1 vs. full backend | `ADR-011` noted `citizen` + `platform_admin` while §17 originally described citizen-only Slice 1 routes | **Resolved in [ADR-015](../06-technical-decisions/DECISIONS.md) & [ADR-017](../06-technical-decisions/DECISIONS.md):** Citizen vertical-slice `/me/*` routes serve citizens, `/admin/*` routes serve `platform_admin` (zero health-record access), and provider/CHW/facility workflows are runtime-gated behind `FEATURE_PROVIDER_PORTAL_ENABLED` |

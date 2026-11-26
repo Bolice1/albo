@@ -87,21 +87,21 @@ Categories come from the proposal and DATABASE_SCHEMA. First-release fields requ
 
 ## 6. Purposes and lawful basis
 
-Each processing activity is linked to a consent purpose (DATABASE_SCHEMA §5.1). Candidate purposes — **Proposed**, codes and wording to be approved:
+Each processing activity is linked to a consent purpose (DATABASE_SCHEMA §5.1). Per [ADR-015](../06-technical-decisions/DECISIONS.md), the nine canonical `v1` `consent_purpose.code` values below are standardized for backend enforcement in synthetic development/testing (final production legal wording remains tracked under `OPEN-007`/`OPEN-008`):
 
-| Candidate purpose | Data used | Basis |
-|---|---|---|
-| Provide account and service | Account, identity mapping | Necessary to provide the service (to validate) |
-| Store health and lifestyle inputs | Approved health inputs | Explicit consent |
-| Store wellbeing check-ins | Check-in responses | Explicit consent |
-| Calculate preventive risk indicators | Inputs, environmental context | Explicit consent |
-| Use location for environmental context | Area-level location | Explicit consent |
-| Use location for facility search | Location for the current search | Explicit consent, per use or session |
-| Share data with an assigned provider | Scoped records per assignment | Explicit consent per provider/organization |
-| Send notifications | Contact channel, notification category | Opt-in |
-| Generate reports | User's own records | User request |
-| Assistant conversations | Messages, minimum context | Explicit consent (safety gate) |
-| Security and audit | Audit events, operational logs | Legal obligation / legitimate security need (to validate) |
+| Processing activity | Canonical `code` (`v1`) | Data used | Basis |
+|---|---|---|---|
+| Provide account and service | *(Service baseline — non-optional)* | Account, identity mapping | Necessary to provide the service (to validate, `OPEN-007`) |
+| Store health and lifestyle inputs | `health_input_storage` | Approved health inputs | Explicit consent |
+| Store wellbeing check-ins | `wellbeing_check_ins` | Check-in responses | Explicit consent (`FEATURE_CHECKINS_ENABLED`) |
+| Calculate preventive risk indicators | `preventive_risk_calculation` | Inputs, environmental context | Explicit consent |
+| Use location for environmental context | `environmental_context` | Area-level location | Explicit consent |
+| Use location for facility search | `facility_location_search` | Location for the current search | Explicit consent, per use or session |
+| Share data with an assigned provider | `provider_data_sharing` | Scoped records per assignment | Explicit consent per provider/organization (`FEATURE_PROVIDER_PORTAL_ENABLED`) |
+| Send notifications | `notifications_delivery` | Contact channel, notification category | Opt-in |
+| Generate reports | `report_generation` | User's own records | Explicit consent / user request |
+| Assistant conversations | `assistant_conversations` | Messages, minimum context | Explicit consent (`FEATURE_ASSISTANT_ENABLED`) |
+| Security and audit | *(Operational / legal baseline)* | Audit events, operational logs | Legal obligation / legitimate security need (to validate, `OPEN-007`) |
 
 The following uses are **not approved** and require a new purpose, consent, and review:
 
@@ -167,7 +167,7 @@ Destructive cascades are avoided where traceability is required; status changes 
 |---|---|---|---|
 | Be informed | Onboarding explanation, privacy notice, consent text | FR-002 | First release |
 | Access | View own profile, inputs, assessments, consents, and reports | FR-005, FR-011, FR-036 | First release |
-| Rectification | Correct editable inputs; corrections supersede, not silently overwrite | FR-005, FR-008 | First release |
+| Rectification | Correct editable inputs via immutable supersession (`supersedes_input_id`, [ADR-017](../06-technical-decisions/DECISIONS.md)) | FR-005, FR-008 | First release |
 | Withdraw consent | Consent management screen | FR-003 | First release |
 | Erasure | Account and data deletion request | FR-006 | Should |
 | Portability / export | Machine-readable export of own data | FR-006 | Should |
@@ -188,9 +188,8 @@ Albo's risk indicators are generated automatically. To respect rights related to
 
 ## 10. Children and vulnerable users
 
-- The first-release target users are not yet approved (REQUIREMENTS §9).
-- **Proposed:** the first release is limited to adults; minors are excluded until a guardian-consent flow, age verification approach, and child-safety review are approved.
-- Mental-health and self-harm signals require the reviewed escalation flow (FR-024).
+- **First-release target population ([ADR-010](../06-technical-decisions/DECISIONS.md)):** Limited to **adult citizens in Rwanda (`18+`)**; minors are excluded until a guardian-consent flow, age verification approach, and child-safety review are approved (`OPEN-007`).
+- Mental-health and self-harm signals require the reviewed escalation flow (FR-024, `ADR-006`).
 - Family-member access requires an approved delegation model ([ACCESS_CONTROL.md](ACCESS_CONTROL.md) §4).
 
 ## 11. Sharing and disclosure
@@ -277,21 +276,16 @@ The privacy design is ready for production use when:
 - The privacy notice and consent texts are reviewed and versioned.
 - A privacy impact assessment for the first release is approved.
 
-## 18. Open privacy decisions
+## 18. Open and resolved privacy decisions
 
-- First-release geography and applicable legal framework
-- Data controller entity, privacy owner, and supervisory-authority registration
-- First-release data fields and consent purposes
-- Lawful basis for account, security, and audit processing
-- Retention periods per category and backup expiry
-- Account-deletion grace period and legally retained records
-- Consent-withdrawal effects on stored data and derived outputs
-- Minimum age and guardian-consent approach
-- Hosting location and cross-border transfer authorization
-- Export format for data portability
-- Rights-request response times
-- Whether assistant conversations are stored, and for how long
-- Provider and facility controller/processor relationships
+### Resolved for synthetic Slice 1 & backend onboarding
+- **First-release target geography and minimum age:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md)** — adult citizens (`18+`) in Rwanda (minors excluded until guardian consent is approved).
+- **First-release data fields and canonical `v1` consent purpose codes:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md) & [ADR-015](../06-technical-decisions/DECISIONS.md)** for synthetic development/testing; health-input rectification uses immutable supersession (`ADR-017`).
+
+### Remaining pre-production legal & retention decisions (`OPEN-007`, `OPEN-008`)
+- Legal counsel sign-off on Rwanda Law N° 058/2021 obligations, data controller entity, DPO/privacy owner, NCSA registration, final production consent wording, and hosting residency (`OPEN-007` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Retention periods per category, backup expiry cycle, account-deletion grace period, legally retained minimized records, and rights-request SLA (`OPEN-008`)
+- Assistant conversation retention duration (`OPEN-008`, `OPEN-011`) and provider/facility controller-processor agreements (`OPEN-009`)
 
 ## 19. Discrepancies to resolve
 

@@ -1,8 +1,11 @@
 # Phase 1 — Engineering foundation design
 
 **Date:** 2026-11-19
-**Status:** Approved
+**Status:** Approved (with scope & toolchain overrides recorded in [ADR-016](../../06-technical-decisions/DECISIONS.md) and [ADR-017](../../06-technical-decisions/DECISIONS.md))
 **Roadmap phase:** Phase 1 — Architecture and engineering foundation ([ROADMAP.md](../../01-project-foundation/ROADMAP.md) §3)
+
+> [!IMPORTANT]
+> **Implementation override (`2026-11-25` — [ADR-016](../../06-technical-decisions/DECISIONS.md) & [ADR-017](../../06-technical-decisions/DECISIONS.md)):** Per project owner directive, initial repository onboarding builds **`backend/`**, **`ai-services/`**, **`infrastructure/`**, and **GitHub Actions CI** with complete domain contracts and runtime governance circuit breakers (`FEATURE_*`), explicitly deferring **`frontend/`** (and Playwright browser E2E) to a separate frontend onboarding track. In addition, **Bun** (`bun.lock`, `bun install --frozen-lockfile`) replaces `pnpm`/Node as the JavaScript/TypeScript package manager and script runner for `backend/`, alongside **Python 3.12 + `uv`** (`uv.lock`) for `ai-services/`. Where §6 below mentions `frontend/` or `pnpm`, `ADR-016` governs.
 
 ## 1. Intent
 
