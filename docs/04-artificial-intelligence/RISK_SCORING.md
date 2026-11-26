@@ -69,7 +69,7 @@ Every rule version in `ai-services/risk_engine/` must be defined as a declarativ
 
 ### 5.1 Metadata header
 
-- `use_case_code`: Stable identifier matching `risk_use_case.code` (e.g., `lifestyle_ncd_preventive_v1`)
+- `use_case_code`: Stable identifier matching `risk_use_case.code` (e.g., `lifestyle_ncd_preventive` — without a version suffix per [ADR-015](../06-technical-decisions/DECISIONS.md))
 - `rule_model_version`: Semantic version matching `rule_model_version.version` (e.g., `rules-v1.0.0`)
 - `implementation_type`: `rule` or `weighted_score`
 - `clinical_review_status`: `draft`, `under_review`, `approved`, or `retired`
@@ -97,9 +97,9 @@ To guarantee explainability, complex black-box transformations are prohibited in
    $$S = \sum_{i=1}^{n} w_i \cdot f_i$$
 3. **Mandatory floor rules (guardrails):** A specific high-priority factor (for example, multiple high-exposure indicators present simultaneously) can set a minimum risk level (such as at least `moderate` or `high`) regardless of the sum of other lifestyle factors.
 
-### 5.4 Risk-level vocabulary (Proposed)
+### 5.4 Risk-level vocabulary ([ADR-014](../06-technical-decisions/DECISIONS.md))
 
-UI_UX §6 and DATABASE_SCHEMA §18 note that the final risk-level vocabulary requires team approval. The proposed standardized vocabulary across all first-release use cases is:
+Per `ADR-014`, the standardized risk-level vocabulary across all first-release use cases (with raw numerical weight sums omitted from citizen UIs) is:
 
 | `status` | `level` | Meaning | UI presentation rule (UI_UX §6) |
 |---|---|---|---|
@@ -173,7 +173,7 @@ Before a rule set or version is marked `approved` for use:
 
 ## 10. Future transition to machine-learning models (`Later`)
 
-In alignment with FR-020, AI-006, and ROADMAP Phase 7:
+In alignment with FR-020, AI-006, and [ROADMAP.md](../01-project-foundation/ROADMAP.md) Phase 6:
 
 - A machine-learning model (e.g., calibrated logistic regression, random forest, or XGBoost) may be evaluated only after structured data quality, clinical labeling governance, and privacy consent for model development are established.
 - **Shadow / benchmark requirement:** Any candidate ML model must be benchmarked against the existing deterministic rule version on representative evaluation sets, including calibration across age, sex, and geographic subgroups.
@@ -181,29 +181,30 @@ In alignment with FR-020, AI-006, and ROADMAP Phase 7:
 
 ## 11. First-release risk-scoring scope
 
-Aligned with the first vertical slice in [PROJECT_STATUS.md](../PROJECT_STATUS.md) and SYSTEM_DESIGN §20:
+Aligned with the first vertical slice in [PROJECT_STATUS.md](../PROJECT_STATUS.md), SYSTEM_DESIGN §20, and [ADR-010](../06-technical-decisions/DECISIONS.md):
 
-- One approved first-release preventive risk use case (recommended: a self-contained lifestyle/preventive indicator using one or a small set of approved synthetic health/lifestyle inputs so the slice does not block on external weather providers)
-- One versioned deterministic rule specification (`rules-v1.0.0`)
+- Approved first vertical-slice preventive risk use case: `lifestyle_ncd_preventive` (`rules-v1.0.0`, self-contained with four allowlisted lifestyle inputs and `max_age_hours: 720`)
 - Full completeness, range, and freshness validation returning `complete` or `limited`
-- Structured output with risk level, contributing factors, non-diagnostic limitations, and next step
+- Structured output with discrete `level`, ordered `contributing_factors`, mandatory non-diagnostic `limitations`, and `recommended_next_steps`
 - Automated Pytest suite verifying every branch of the rule set on synthetic profiles
 
 ## 12. Acceptance criteria
 
 The risk-scoring design is ready for first-release implementation when:
 
-- The risk-level vocabulary (`low`, `moderate`, `high`, plus `limited`/`failed` statuses) is approved.
-- The first vertical-slice risk use case, its exact input fields, and its freshness rules are selected.
-- A qualified reviewer approves the first rule version's logic, limitations, and next-step wording.
+- The risk-level vocabulary (`low`, `moderate`, `high`, plus `limited`/`failed` statuses) is approved (`ADR-014`).
+- The first vertical-slice risk use case, its exact input fields, and its freshness rules are selected (`ADR-010`, `ADR-015`).
+- A qualified reviewer approves the production rule version's logic, limitations, and next-step wording (`OPEN-006` before live citizen release).
 - The rule version is cataloged in [MODEL_DOCUMENTATION.md](MODEL_DOCUMENTATION.md).
 - Decisions are recorded in [DECISIONS.md](../06-technical-decisions/DECISIONS.md).
 
-## 13. Open risk-scoring decisions
+## 13. Open and resolved risk-scoring decisions
 
-- Exact risk use case(s) for the first vertical slice and first release
-- Named clinical/public-health reviewer(s) for rule sign-off
-- Final risk-level vocabulary (`low` / `moderate` / `high` vs. alternative labels)
-- Freshness windows (`max_age_hours`) for self-reported lifestyle inputs versus environmental observations
-- Whether numerical score values are ever shown to citizens, or only the discrete level (`low`/`moderate`/`high`) and contributing factors (recommended: show discrete level and factors only, to avoid false precision)
-- How concurrent risk assessments across multiple use cases are ordered on the citizen dashboard
+### Resolved for Slice 1 & synthetic onboarding
+- **First vertical-slice risk use case and freshness window:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md) & [ADR-015](../06-technical-decisions/DECISIONS.md)** — `lifestyle_ncd_preventive` (`rules-v1.0.0`), `max_age_hours: 720` (30 days).
+- **Risk-level vocabulary and numeric-score suppression:** **Resolved in [ADR-014](../06-technical-decisions/DECISIONS.md)** — discrete `low | moderate | high`, `null` when `limited` or `failed`, and no raw numeric point totals displayed in citizen UIs.
+
+### Remaining pre-production decisions
+- Named clinical/public-health reviewer(s) for production rule sign-off (including `2`–`4` fruit/veg servings/day neutral band review) (`OPEN-006` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Freshness windows (`max_age_hours`) for live environmental observations once Rwanda weather/air-quality providers are selected (`OPEN-010`)
+- Dashboard ordering across concurrent multi-domain use cases once additional use cases move from `draft` to `approved`

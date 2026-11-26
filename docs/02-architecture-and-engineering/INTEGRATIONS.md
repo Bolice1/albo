@@ -309,15 +309,14 @@ Production credentials and real patient data must never be used in automated tes
 9. Review quality and cost periodically.
 10. Retire or replace the integration with a documented migration plan when needed.
 
-## 19. Open integration decisions
+## 19. Open and resolved integration decisions
 
-- Final identity provider and OIDC/Supabase boundary
-- First map, geocoding, and routing provider
-- Source of truth for Rwanda facility and provider data
-- First weather, air-quality, and environmental sources
-- Whether public-health feeds are display-only or calculation inputs
-- First notification channel
-- Object-storage provider and report retention
-- AI model provider, if any external model is used
-- Webhook and background-job infrastructure
-- Data residency, licensing, attribution, and provider-cost constraints
+### Resolved for Phase 1 & backend onboarding
+- **Identity provider boundary:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md)** — standards-based OIDC/JWT verification in NestJS (Supabase Auth cloud default + offline OIDC-compatible JWT test signer).
+- **Internal AI-service integration:** **Resolved in [ADR-013](../06-technical-decisions/DECISIONS.md)** — synchronous private HTTP call (`<= 2000ms` timeout) authenticated with constant-time `X-Internal-Service-Token` for Slice 1, plus Redis + BullMQ (`ADR-008`) for asynchronous jobs.
+- **Adapter ports and local/test object storage:** **Resolved in [ADR-016](../06-technical-decisions/DECISIONS.md) & [ADR-017](../06-technical-decisions/DECISIONS.md)** — typed adapter interfaces in `backend/src/integrations/` backed by deterministic synthetic/sandbox implementations in `development`/`test`, and S3-compatible private report storage (`minio/minio` locally) with short-lived presigned URLs.
+
+### Remaining vendor & pre-production decisions
+- Authoritative Rwanda facility registry, map/geocoding/routing, weather/air-quality, and external notification vendor contracts (`OPEN-010` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- External AI model provider, if any (`OPEN-011`)
+- Production S3-compatible object-storage vendor, report retention window, and Rwanda data-residency compliance (`OPEN-007`, `OPEN-008`, `OPEN-012`)

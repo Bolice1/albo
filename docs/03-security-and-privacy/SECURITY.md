@@ -231,8 +231,8 @@ Proposed verification baseline: use the OWASP Application Security Verification 
 
 ## 14. Vulnerability and dependency management
 
-- Dependencies are pinned through lockfiles for the web client, core API, and AI service.
-- Automated dependency vulnerability scanning runs in CI.
+- Dependencies are pinned through committed lockfiles (`bun.lock` for `backend/`, `uv.lock` for `ai-services/`, plus `frontend/` lockfile when onboarded per [ADR-016](../06-technical-decisions/DECISIONS.md)) using `--frozen-lockfile` / `--frozen` in CI and Docker builds.
+- Automated dependency vulnerability scanning (`bun audit`, `uv run pip-audit`) runs in GitHub Actions CI.
 - Critical and high vulnerabilities in reachable code are fixed or formally risk-accepted before release; target fix times to be decided.
 - New dependencies are reviewed for maintenance, license, and necessity (TECH_STACK §14).
 - Proposed: a documented channel for responsibly reporting security issues once Albo is publicly accessible.
@@ -266,40 +266,39 @@ No incident-response process is approved yet. Before production health data is u
 
 Aligned with the first vertical slice in [PROJECT_STATUS.md](../PROJECT_STATUS.md):
 
-- Selected identity provider with server-side token validation
-- Deny-by-default authorization and citizen-only data access ([ACCESS_CONTROL.md](ACCESS_CONTROL.md) §17)
-- HTTPS everywhere; private database, Redis, and AI service
+- Selected identity provider with server-side token validation (`ADR-011`)
+- Deny-by-default authorization and scoped role/consent access ([ACCESS_CONTROL.md](ACCESS_CONTROL.md) §17, `ADR-004`, `ADR-015`)
+- HTTPS everywhere; private database, Redis, MinIO, and AI service (`X-Internal-Service-Token` per `ADR-013`)
 - Secret manager or platform secret store; no secrets in the repository
 - Server-side schema validation and allowlisted health inputs
 - Safe error contract and response field allowlists
 - Redacted structured logging and audit events for sensitive actions
 - Rate limits on authentication, risk calculation, and other abuse-prone routes
-- CI with tests, dependency scanning, and secret scanning
+- GitHub Actions CI with tests, dependency scanning, and secret scanning (`ADR-016`)
 - Synthetic data in all non-production environments
 
 ## 19. Acceptance criteria
 
 The security design is ready for first-release implementation when:
 
-- The identity provider and token handling pattern are selected.
-- Hosting, network boundaries, and secret management are chosen.
+- The identity provider and token handling pattern are selected (`ADR-011`).
+- Hosting, network boundaries, and secret management are chosen (`OPEN-012` for production).
 - At-rest encryption and key-management responsibilities are agreed.
 - Logging redaction rules and log retention are defined.
-- CI security checks are specified.
+- CI security checks are specified (`ADR-016`).
 - The threat model covers first-release data flows.
-- Incident-response ownership is assigned before production data is used.
+- Incident-response ownership is assigned before production data is used (`OPEN-007`, `OPEN-012`).
 - Decisions are recorded in [DECISIONS.md](../06-technical-decisions/DECISIONS.md).
 
-## 20. Open security decisions
+## 20. Open and resolved security decisions
 
-- Identity provider, token storage pattern, and MFA policy
-- Hosting provider, network topology, and data residency
-- Secret manager and rotation schedule
-- Field-level encryption scope and key management
-- Internal service-to-service authentication method (for example, mutual TLS or signed service tokens)
-- Log and audit retention periods and access roles
-- Vulnerability fix-time targets
-- Security verification baseline (proposed OWASP ASVS / API Top 10)
-- Incident-response owner and notification obligations
-- Recovery point and recovery time objectives
-- Applicable legal and regulatory security obligations in Rwanda (to validate with [DATA_PRIVACY.md](DATA_PRIVACY.md))
+### Resolved for Phase 1 & backend onboarding
+- **Identity provider and JWT validation boundary:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md)** — standard OIDC/JWT verification in NestJS (Supabase Auth cloud default + offline OIDC-compatible JWT test signer).
+- **Internal service-to-service authentication method:** **Resolved in [ADR-013](../06-technical-decisions/DECISIONS.md)** — dedicated `X-Internal-Service-Token` verified in constant time (`hmac.compare_digest`) over the private network, with `<= 2000ms` timeout and `X-Request-Id` propagation.
+- **CI security pipeline and deterministic lockfiles:** **Resolved in [ADR-016](../06-technical-decisions/DECISIONS.md)** — GitHub Actions running `gitleaks`, `bun audit`, `uv run pip-audit`, and strict frozen-lockfile builds.
+
+### Remaining pre-production security decisions (`OPEN-007`, `OPEN-008`, `OPEN-012`)
+- Browser token storage pattern (when `frontend/` is onboarded per `ADR-016`) and MFA enforcement policy for privileged roles
+- Production cloud hosting provider, network topology, secret manager + rotation schedule, and Rwanda data residency (`OPEN-007`, `OPEN-012` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Field-level encryption scope, key management, and RPO/RTO targets (`OPEN-012`)
+- Log and audit retention periods, vulnerability SLA targets, OWASP ASVS checklist sign-off, and incident-response owner / 48-hour NCSA breach workflow (`OPEN-007`, `OPEN-008`, `OPEN-012`)

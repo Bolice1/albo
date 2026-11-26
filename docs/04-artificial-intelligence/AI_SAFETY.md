@@ -74,13 +74,13 @@ The `ai-services/evaluation/` package must run automated safety checks in CI on 
 
 ## 6. Runtime monitoring and kill switches
 
-Once an AI or rule feature is running in staging or production:
+Once an AI or rule feature is running in staging or production ([ADR-017](../06-technical-decisions/DECISIONS.md)):
 
 1. **Feature-level circuit breakers (kill switches):**
-   - The core API can disable the AI assistant (`ASSISTANT_ENABLED=false`) or any specific `use_case_code` via configuration without redeploying code.
+   - The core API can disable the AI assistant (`FEATURE_ASSISTANT_ENABLED=false`), wellbeing check-ins (`FEATURE_CHECKINS_ENABLED=false`), or any specific `use_case_code` via `APPROVED_RISK_RULE_VERSIONS` configuration without redeploying code.
    - When disabled, the API returns a clean, calm `unavailable` / `limited` state and preserves facility search and static emergency resources.
 2. **Version pinning and instant rollback:**
-   - The core API controls which `rule_model_version` is requested. If a newly deployed rule version exhibits unexpected distribution shifts, operators can pin back to the previous approved version immediately.
+   - The core API controls which `rule_model_version` is requested via `APPROVED_RISK_RULE_VERSIONS`. If a newly deployed rule version exhibits unexpected distribution shifts, operators can pin back to the previous approved version immediately.
 3. **Privacy-preserving safety telemetry:**
    - Monitor rates of `limited` assessments (by reason code), output safety-filter blocks, escalation triggers, and adapter timeouts without logging user content.
    - A spike in output safety-filter blocks or `failed` assessments triggers an operator alert and review.

@@ -1,0 +1,24 @@
+title = "Albo Gitleaks Secret Scanning Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow synthetic placeholders in .env.example and synthetic test fixtures while catching real secrets"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/).*\.env\.example$''',
+  '''(^|/)docker-compose\.yml$''',
+  '''(^|/)infrastructure/docker/''',
+  '''(^|/)\.github/workflows/ci\.yml$''',
+  '''(^|/)backend/test/''',
+  '''(^|/)ai-services/(tests|evaluation)/''',
+]
+regexTarget = "match"
+regexes = [
+  '''example[-_]placeholder[-_][a-zA-Z_-]+''',
+  '''albo_(local|test)_synthetic_[a-zA-Z0-9_-]+''',
+  '''minioadmin''',
+  '''synthetic[-_][a-zA-Z0-9_-]+''',
+  '''replace[-_]me[-_]with[-_][a-zA-Z0-9_-]+''',
+]

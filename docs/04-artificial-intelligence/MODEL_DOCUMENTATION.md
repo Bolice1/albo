@@ -165,7 +165,7 @@ No rule or model version is approved for production yet. The table below registe
     - `6` to `10` hours/day → `+0` points (`factor_code: "sleep_duration_adequate"`, `direction: "protective"`)
   - `diet_fruit_veg_servings_per_day` (when present and fresh):
     - `< 2` servings/day → `+1` point (`factor_code: "fruit_veg_intake_low"`, `direction: "increases_risk"`)
-    - `2` to `4` servings/day → `+0` points
+    - `2` to `4` servings/day → `+0` points *(neutral — no `contributing_factors` entry emitted in `rules-v1.0.0`; pending clinical reviewer confirmation under `OPEN-006`, see [ADR-015](../06-technical-decisions/DECISIONS.md))*
     - `>= 5` servings/day → `+0` points (`factor_code: "fruit_veg_intake_adequate"`, `direction: "protective"`)
 - **Level thresholds (`ADR-014`):**
   - Total points `0`–`1` → `level: "low"`
@@ -179,19 +179,22 @@ No rule or model version is approved for production yet. The table below registe
 - Verified via `ai-services/tests/` boundary matrix, 100-run determinism check, missing/stale input `limited`-status test, and zero sensitive-payload log-redaction test.
 
 #### 7. Monitoring, drift, and rollback
-- Track assessment count and status distribution (`complete` vs. `limited` vs. `failed`). Rollback target: disable use case via configuration (`status: "limited"`).
+- Track assessment count and status distribution (`complete` vs. `limited` vs. `failed`). Rollback target: disable use case via `APPROVED_RISK_RULE_VERSIONS` configuration (`status: "limited"`).
 
 ## 7. Acceptance criteria
 
 Model and rule documentation is ready for first-release implementation when:
 
 - The first vertical-slice use case has a completed card in section 6 with all seven template sections filled in.
-- A qualified health/clinical reviewer and the technical owner have signed off on the card.
-- The version string in the card matches the seeded `rule_model_version` record and the `ai-services/` contract test suite.
+- A qualified health/clinical reviewer and the technical owner have signed off on the card (`OPEN-006` before production release).
+- The version string in the card (`rules-v1.0.0`) matches the seeded `rule_model_version` record and the `ai-services/` contract test suite (`ADR-015`).
 - The approval is recorded in [DECISIONS.md](../06-technical-decisions/DECISIONS.md).
 
-## 8. Open model-documentation decisions
+## 8. Open and resolved model-documentation decisions
 
-- Selection of the exact first vertical-slice risk use case to move from `draft` to `under_review`
-- Assignment of the clinical/public-health reviewer responsible for rule-card sign-off
-- Whether rule cards live purely in this markdown file or are also mirrored as structured JSON/YAML metadata inside `ai-services/risk_engine/` (recommended: keep human governance card here and validate code metadata against it in CI)
+### Resolved
+- **First vertical-slice risk use case (`under_review`):** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md) & [ADR-015](../06-technical-decisions/DECISIONS.md)** — `lifestyle_ncd_preventive` (`rules-v1.0.0`) is selected and documented in §6.1 above for synthetic Slice 1 implementation.
+
+### Remaining pre-production decisions
+- Assignment of the qualified clinical/public-health reviewer responsible for production rule-card sign-off, including confirming whether `diet_fruit_veg_servings_per_day` of `2`–`4` servings/day remains silent/neutral (`OPEN-006` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Whether rule cards are also mirrored as structured JSON/YAML metadata inside `ai-services/risk_engine/` (recommended: keep human governance card here and validate code metadata against it in CI)

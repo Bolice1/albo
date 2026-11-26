@@ -228,18 +228,18 @@ Detailed entities and relationships are defined in [DATABASE_SCHEMA.md](DATABASE
 
 ## 12. Deployment shape
 
-The initial deployment may run as a small set of independently deployable applications:
+The initial deployment runs as a small set of independently deployable applications:
 
 ```text
-Frontend application
-Core API application
-AI service application
+Frontend application (deferred to separate onboarding track per ADR-016)
+Core API application (backend/)
+AI service application (ai-services/)
 PostgreSQL/PostGIS
-Redis and job worker
-Object storage, if reports require it
+Redis and job worker (backend/ worker entrypoint)
+Object storage (private S3-compatible / MinIO locally for reports per ADR-017)
 ```
 
-Docker is the proposed packaging baseline. Development, test, staging, and production must have separate configuration and access controls. Kubernetes is not an initial requirement.
+Docker is the adopted packaging baseline (`ADR-008`, `ADR-016`). Development, test, staging, and production must have separate configuration and access controls. Kubernetes is not an initial requirement.
 
 ## 13. Resilience and failure behavior
 
@@ -289,15 +289,16 @@ The architecture is ready for first-release implementation when:
 - Local development and environment separation are documented.
 - The first vertical slice can be built without inventing core boundaries.
 
-## 17. Open architecture decisions
+## 17. Open and resolved architecture decisions
 
-- Final identity provider and token claims
-- Exact first-release domain modules and owners
-- Final database schema and migration tool
-- Whether risk calculation is synchronous for the first use cases
-- Queue and worker deployment model
-- Approved hosting, object storage, and observability services
-- Facility, map, weather, and environmental data providers
-- Provider organization and assignment model
-- Clinical review and safety-governance integration points
-- Performance, availability, backup, and recovery targets
+### Resolved
+- **Identity provider and token claims:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md)** — standard OIDC/JWT validation boundary (Supabase Auth cloud default + offline JWT test signer).
+- **Database ORM, account table naming, and migration tool:** **Resolved in [ADR-012](../06-technical-decisions/DECISIONS.md)** — Prisma ORM + Prisma Migrate with `user_accounts`.
+- **Synchronous vs. asynchronous Slice 1 risk calculation:** **Resolved in [ADR-013](../06-technical-decisions/DECISIONS.md)** — synchronous internal HTTP call (`<= 2000ms` timeout, `X-Internal-Service-Token`).
+- **Queue/worker packaging, local object storage, and backend-first onboarding:** **Resolved in [ADR-008](../06-technical-decisions/DECISIONS.md), [ADR-016](../06-technical-decisions/DECISIONS.md), and [ADR-017](../06-technical-decisions/DECISIONS.md)** — Redis + BullMQ `job-worker` container, MinIO private S3-compatible object storage locally, and runtime governance circuit breakers (`FEATURE_*`).
+
+### Remaining pre-production decisions
+- Clinical review sign-off and Rwanda emergency/crisis directory (`OPEN-006` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Production cloud hosting, residency, production S3/observability backends, and RPO/RTO targets (`OPEN-007`, `OPEN-012`)
+- First-release provider portal production activation (`OPEN-009`)
+- Live Rwanda facility, map, weather, and external notification vendor contracts (`OPEN-010`)

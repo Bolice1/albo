@@ -1,8 +1,8 @@
 # Albo project documentation status
 
-**Date:** 2026-11-25  
+**Date:** 2026-11-26  
 **Status:** Approved — all six documentation areas (`01` through `06`) approved  
-**Implementation status:** Application code has not started (documentation baseline approved; ready for Phase 1 engineering foundation and first vertical-slice implementation)
+**Implementation status:** Backend (`backend/` with Bun + NestJS + Prisma/PostGIS + BullMQ) and AI services (`ai-services/` with Python 3.12 + `uv` + FastAPI + 7 safety suites), Docker packaging, and CI are **implemented and verified** (`frontend/` deferred per `ADR-016`)
 
 ## 1. Project foundation approved
 
@@ -302,40 +302,40 @@ All four `05-development-standards/` documents are approved.
   - `ADR-012`: Prisma ORM + Prisma Migrate with `user_accounts` table naming
   - `ADR-013`: Synchronous NestJS ↔ FastAPI HTTP call (`<= 2000ms` timeout) authenticated via `X-Internal-Service-Token` for Slice 1
   - `ADR-014`: Discrete risk-level vocabulary (`low`, `moderate`, `high`, and `null` when `limited` or `failed`)
+  - `ADR-015`: Resolution of Phase 1 contract discrepancies (`rule_model_version`, `lifestyle_ncd_preventive`, nine canonical `v1` consent purpose codes, active role scoping, resolved decision links, and phase cross-references)
+  - `ADR-016`: Backend-only onboarding boundary (`backend/`, `ai-services/`, `infrastructure/`, CI; `frontend/` deferred) and toolchain selection (**Bun** + **Python 3.12 / `uv`** + Docker Compose + GitHub Actions)
+  - `ADR-017`: Runtime governance circuit breakers (`FEATURE_*`), immutable health-input supersession (`supersedes_input_id`), typed synthetic/sandbox integration adapters, and private S3/MinIO presigned report URLs
 - Consolidated register of remaining post-Slice-1 / pre-production decisions (`OPEN-006` through `OPEN-012`)
 
 ### CHANGELOG.md (approved)
 
-- Chronological record of all repository milestones from initialization (2026-11-11) through project foundation and architecture (2026-11-14), security and privacy (2026-11-18), artificial intelligence, development standards, and technical decisions (2026-11-19), and full documentation baseline approval (2026-11-25)
+- Chronological record of all repository milestones from initialization (2026-11-11) through project foundation and architecture (2026-11-14), security and privacy (2026-11-18), artificial intelligence, development standards, and technical decisions (2026-11-19), and full documentation baseline + Phase 1 contract synchronization (2026-11-25)
 
 Both `06-technical-decisions/` documents are approved.
 
 ## 8. Current overall status
 
-All 26 domain documentation files across `01-project-foundation/`, `02-architecture-and-engineering/`, `03-security-and-privacy/`, `04-artificial-intelligence/`, `05-development-standards/`, and `06-technical-decisions/` (plus `README.md`, `AGENTS.md`, `docs/README.md`, and `docs/PROJECT_STATUS.md`) are approved as coherent, cross-referenced engineering contracts derived from `Albo_Project_Proposal.docx`.
+All 26 domain documentation files across `01-project-foundation/`, `02-architecture-and-engineering/`, `03-security-and-privacy/`, `04-artificial-intelligence/`, `05-development-standards/`, and `06-technical-decisions/` (plus `README.md`, `AGENTS.md`, `docs/README.md`, and `docs/PROJECT_STATUS.md`) are approved and synchronized with the implemented backend and AI codebase (`ADR-001` through `ADR-017`).
 
-No application code has been implemented yet.
+Per `ADR-016` and `ADR-017`:
+- **`backend/`** (Bun + NestJS modular monolith + Prisma/PostGIS + Redis/BullMQ + S3/MinIO) is implemented and passing strict lint, `tsc --noEmit`, build, and `33/33` unit and live integration tests (including Vertical Slice 1, horizontal IDOR `404` isolation, consent withdrawal, immutable supersession, PostGIS spatial search, Provider Portal scoping, presigned private reports, and BullMQ worker consent re-checks).
+- **`ai-services/`** (Python 3.12 + `uv` + FastAPI) is implemented and passing `ruff`, `mypy --strict`, and `138/138` `pytest` tests across all 7 pre-release AI safety evaluation suites.
+- **`frontend/`** (Next.js UI) remains deferred to the dedicated frontend onboarding track.
 
-## 9. Main decisions still requiring approval
+## 9. Remaining pre-production decisions (`OPEN-006` through `OPEN-012`)
 
-- First-release geography, language, users, and risk use cases
-- Identity provider and authentication boundary
-- First-release database fields and provider-access model
-- Facility, map, weather, and environmental-data providers
-- Consent, retention, deletion, and export rules
-- Clinical review and emergency/self-harm escalation process
-- First vertical slice to implement
-- Hosting, budget, operational ownership, and recovery targets
+First vertical-slice and Phase 1 foundation decisions (`OPEN-001`–`OPEN-005`) are resolved in `ADR-010`–`ADR-017`. Remaining pre-production gates before enabling gated features in production or collecting live citizen data:
 
-## 10. Recommended next step
+- Clinical reviewer sign-off and verified Rwanda emergency/self-harm escalation directory (`OPEN-006`)
+- Legal controller entity, NCSA registration, final production consent wording, and Rwanda data-residency compliance (`OPEN-007`)
+- Production data retention periods, backup expiry, and deletion grace period (`OPEN-008`)
+- First public-release inclusion of `FEATURE_PROVIDER_PORTAL_ENABLED` vs. facility discovery only (`OPEN-009`)
+- Authoritative Rwanda facility, map, weather/air-quality, and external notification vendor contracts (`OPEN-010`)
+- Production AI assistant inclusion (`FEATURE_ASSISTANT_ENABLED`) and model-adapter vendor choice (`OPEN-011`)
+- Production cloud hosting, S3 vendor, secret manager, observability backend, and RPO/RTO targets (`OPEN-012`)
 
-Review and approve the first vertical slice before implementation:
+## 10. Recommended next steps
 
-1. Citizen signs in.
-2. The core API creates or retrieves the application account.
-3. The citizen grants a test consent purpose.
-4. The citizen submits one approved synthetic health or lifestyle input.
-5. The system stores the input with provenance.
-6. A documented rule calculates one non-diagnostic risk indicator.
-7. The dashboard displays the result, contributing factor, limitation, and next step.
-8. Authorization and audit tests verify the data boundary.
+1. Onboard the deferred `frontend/` Next.js web client against `/api/v1/*` and OpenAPI contracts (`ADR-016`).
+2. Complete clinical review (`OPEN-006`) and legal/privacy validation under Rwanda Law N° 058/2021 (`OPEN-007`, `OPEN-008`) before enabling gated runtime flags or accepting real citizen data.
+3. Replace sandbox weather, map/directions, and notification channel adapters in `backend/src/integrations/` once `OPEN-010` vendor agreements are finalized.

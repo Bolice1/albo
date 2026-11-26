@@ -60,18 +60,18 @@ PostgreSQL is the durable source of truth for application records. PostGIS suppo
 
 ```text
 frontend/
-  Next.js web application
+  Next.js web application (deferred to separate frontend onboarding track per ADR-016)
 
 backend/
-  NestJS modular monolith
+  NestJS modular monolith (Bun toolchain — bun.lock)
   modules/        domain modules
   common/         shared transport and infrastructure concerns
-  database/       migrations and database access
-  jobs/           background-job handlers
-  integrations/   external-provider adapters
+  database/       Prisma schema, migrations, and database access
+  jobs/           BullMQ background-job handlers
+  integrations/   typed external-provider adapters (synthetic/sandbox defaults per ADR-017)
 
 ai-services/
-  FastAPI service
+  FastAPI service (Python 3.12 + uv — uv.lock)
   risk_engine/    rules and scoring
   data_processing/
   model_adapters/
@@ -84,7 +84,7 @@ docs/
   project source of truth
 ```
 
-This is a target structure. It does not authorize implementing every module at once.
+Per [ADR-016](../06-technical-decisions/DECISIONS.md), initial engineering onboarding builds `backend/`, `ai-services/`, `infrastructure/`, and GitHub Actions CI, deferring `frontend/` to a separate onboarding track.
 
 ## 5. Standard protected request flow
 
@@ -131,7 +131,7 @@ Client submits approved input
   → return sanitized input representation
 ```
 
-Corrections should supersede or version an input rather than silently rewriting history when traceability matters. Unapproved arbitrary clinical fields must be rejected.
+Per [ADR-017](../06-technical-decisions/DECISIONS.md), corrections (`PATCH /api/v1/me/health-inputs/{inputId}`) use **immutable supersession**: inside a transaction, the prior `health_inputs` row is marked `status = 'superseded'` and a new `status = 'active'` row is inserted referencing `supersedes_input_id`, preserving historical `input_snapshot` reproducibility. Unapproved arbitrary clinical fields must be rejected (`422 VALIDATION_ERROR`).
 
 ## 8. Risk-assessment flow
 
@@ -148,7 +148,7 @@ Citizen requests assessment
   → client receives level, factors, limitations, and next steps
 ```
 
-The initial rule engine may run synchronously when its latency is bounded. Expensive or batch calculations should use a job:
+Per [ADR-013](../06-technical-decisions/DECISIONS.md), citizen-triggered Slice 1 rule calculations (`lifestyle_ncd_preventive`, `rules-v1.0.0`) run synchronously over the private network (`POST /internal/v1/risk-assessments/calculate`) with `X-Internal-Service-Token` authentication and a strict `2000ms` timeout. Expensive or batch calculations use a BullMQ job:
 
 ```text
 POST assessment request → queued/processing response
@@ -158,7 +158,7 @@ POST assessment request → queued/processing response
                 complete/limited/failed state
 ```
 
-Missing, stale, invalid, or unauthorized inputs must produce a limited or unavailable result, never an invented low-risk result.
+Missing, stale, invalid, or unauthorized inputs must produce `status: "limited"` (`level: null`), never an invented low-risk result (`ADR-003`, `ADR-014`).
 
 ## 9. External-data ingestion flow
 
@@ -220,7 +220,7 @@ User requests report
   → update report status and audit event
 ```
 
-Report generation must not expose records outside the user's or provider's permitted scope. Failed reports must have a safe failure state and retry policy.
+Per [ADR-017](../06-technical-decisions/DECISIONS.md), generated reports are stored in private S3-compatible object storage (`minio/minio` in local/test environments) and downloaded exclusively via short-lived presigned URLs after ownership or `report_access` verification. Failed reports transition to `failed` and never expose partial files.
 
 ## 13. Notification flow
 
@@ -330,7 +330,7 @@ Each environment must define:
 - Database and migration target
 - Queue and object-storage locations
 - External-provider base URLs and credentials
-- Feature flags and approved risk-rule versions
+- Runtime governance circuit-breaker flags (`FEATURE_PROVIDER_PORTAL_ENABLED`, `FEATURE_ASSISTANT_ENABLED`, `FEATURE_CHECKINS_ENABLED`, `APPROVED_RISK_RULE_VERSIONS` — defaulting conservatively in `production` per [ADR-017](../06-technical-decisions/DECISIONS.md))
 - Logging and monitoring destinations
 - Data-retention and access controls
 
@@ -338,20 +338,20 @@ Production secrets and data must never be copied into lower environments. Test a
 
 ## 20. First vertical slice
 
-The first implementation slice should prove the complete path without requiring the entire platform:
+The first implementation slice proves the complete path without requiring the entire platform:
 
-1. Citizen signs in through the approved identity provider.
-2. Core API creates or retrieves the application account.
-3. Citizen grants a test consent purpose.
-4. Citizen submits one approved synthetic health/lifestyle input.
+1. Citizen signs in through the approved identity provider (`ADR-011`).
+2. Core API creates or retrieves the `user_accounts` record (`ADR-012`).
+3. Citizen grants `health_input_storage` and `preventive_risk_calculation` (`v1`) consents (`ADR-015`).
+4. Citizen submits approved synthetic health/lifestyle inputs (`ADR-010`).
 5. API validates and stores the input with provenance.
-6. A documented rule calculates one non-diagnostic risk indicator.
-7. API stores the version and input snapshot.
-8. Dashboard displays the result, contributing factor, limitation, and next step.
+6. `ai-services/` (`lifestyle_ncd_preventive`, `rules-v1.0.0`) calculates one non-diagnostic risk indicator synchronously (`ADR-010`, `ADR-013`).
+7. API stores `rule_model_version` and the immutable `input_snapshot` (`ADR-015`).
+8. API returns (and dashboard renders once `frontend/` is onboarded per `ADR-016`) the discrete `level`, `contributing_factors`, `limitations`, and `recommended_next_steps` (`ADR-014`).
 9. Audit events record the sensitive actions without raw payloads.
-10. Authorization tests prove another user cannot access the record.
+10. Authorization tests prove another user receives `404 NOT_FOUND` (`ADR-004`).
 
-This slice should be completed before adding multiple disease use cases, external device integrations, live consultations, or advanced models.
+This slice is verified end-to-end before enabling live external device integrations, live consultations, or advanced ML models.
 
 ## 21. Implementation readiness checklist
 
@@ -366,14 +366,14 @@ System implementation is ready to begin when:
 - External integrations have mocks or sandboxes.
 - Logs, audit events, and failure states are defined.
 
-## 22. Open system-design decisions
+## 22. Open and resolved system-design decisions
 
-- Exact first vertical slice use case and input fields
-- Synchronous versus queued risk calculation
-- Background-job technology and deployment model
-- Final identity-provider integration flow
-- Local development orchestration
-- Environment and secret-management tooling
-- First facility, map, weather, and notification providers
-- Report generation library and object-storage strategy
-- Performance, availability, and recovery targets
+### Resolved
+- **First vertical-slice use case and input fields:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md) & [ADR-015](../06-technical-decisions/DECISIONS.md)** — `lifestyle_ncd_preventive` (`rules-v1.0.0`) with four allowlisted lifestyle inputs (`max_age_hours: 720`).
+- **Synchronous vs. queued risk calculation:** **Resolved in [ADR-013](../06-technical-decisions/DECISIONS.md)** — synchronous internal HTTP call (`<= 2000ms` timeout, `X-Internal-Service-Token`) for Slice 1; Redis + BullMQ (`ADR-008`) for async batch/report jobs.
+- **Identity-provider integration flow:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md)** — OIDC/JWT validation boundary (Supabase Auth cloud default + offline JWT test signer).
+- **Local development orchestration and object storage:** **Resolved in [ADR-016](../06-technical-decisions/DECISIONS.md) & [ADR-017](../06-technical-decisions/DECISIONS.md)** — Docker Compose (`postgis/postgis:16-3.4`, `redis:7-alpine`, `minio/minio`), Bun (`backend/`), Python 3.12 + `uv` (`ai-services/`), presigned report URLs, and typed synthetic/sandbox integration adapters.
+
+### Remaining pre-production decisions
+- Production secret-management service, cloud hosting, observability backend, and performance/RPO/RTO targets (`OPEN-012` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Live Rwanda facility, map, weather, and external notification vendor contracts (`OPEN-010`)

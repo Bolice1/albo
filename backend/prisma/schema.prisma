@@ -1,0 +1,1028 @@
+// Albo Core Database Schema (PostgreSQL + PostGIS)
+// Reference: docs/02-architecture-and-engineering/DATABASE_SCHEMA.md & ADR-012
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum IdentitySubjectStatus {
+  active
+  suspended
+  deleted
+}
+
+enum AccountStatus {
+  active
+  suspended
+  pending_deletion
+  deleted
+}
+
+enum RoleCode {
+  citizen
+  provider
+  facility_user
+  community_health_worker
+  platform_admin
+}
+
+enum OrganizationStatus {
+  active
+  inactive
+}
+
+enum MembershipStatus {
+  active
+  ended
+  suspended
+}
+
+enum AssignmentStatus {
+  active
+  ended
+  expired
+  revoked
+}
+
+enum ConsentPurposeStatus {
+  draft
+  active
+  retired
+}
+
+enum ConsentRecordStatus {
+  granted
+  withdrawn
+  expired
+  rejected
+}
+
+enum HealthInputCategory {
+  lifestyle
+  activity
+  diet
+  sleep
+  health_history
+  environmental_exposure
+}
+
+enum DataSourceType {
+  self_reported
+  imported
+  provider_recorded
+  generated
+  verified_environmental_adapter
+  verified_facility_registry
+}
+
+enum HealthInputStatus {
+  active
+  corrected
+  superseded
+  retracted
+}
+
+enum CheckInSafetyStatus {
+  normal
+  needs_review
+  escalated
+}
+
+enum ObservationQualityStatus {
+  verified
+  observed
+  forecast
+  estimated
+  stale
+  failed
+  unverified
+}
+
+enum IngestionStatus {
+  scheduled
+  running
+  succeeded
+  partial
+  stale
+  failed
+}
+
+enum UseCaseStatus {
+  draft
+  approved
+  retired
+}
+
+enum ClinicalReviewStatus {
+  draft
+  under_review
+  approved
+  retired
+}
+
+enum ImplementationType {
+  rule
+  weighted_score
+  assistant_adapter
+  ml_model
+}
+
+enum RiskAssessmentStatus {
+  queued
+  processing
+  complete
+  limited
+  failed
+  superseded
+}
+
+enum RiskLevel {
+  low
+  moderate
+  high
+}
+
+enum FacilityType {
+  hospital
+  health_center
+  clinic
+  pharmacy
+  mental_health_center
+  community_health_post
+}
+
+enum FacilityStatus {
+  active
+  temporarily_closed
+  unverified
+  inactive
+}
+
+enum ReferralType {
+  facility_referral
+  provider_contact
+  community_follow_up
+}
+
+enum ReferralStatus {
+  requested
+  accepted
+  completed
+  cancelled
+  declined
+}
+
+enum ConsultationStatus {
+  requested
+  scheduled
+  completed
+  cancelled
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  sms
+  push
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  delivered
+  suppressed
+  failed
+  read
+}
+
+enum ReportStatus {
+  requested
+  queued
+  generating
+  ready
+  failed
+  expired
+}
+
+enum DeletionRequestStatus {
+  requested
+  grace_period
+  completed
+  cancelled
+}
+
+enum ExportRequestStatus {
+  requested
+  ready
+  expired
+  failed
+}
+
+enum ActorType {
+  user
+  service
+  system
+  anonymous
+}
+
+enum AuditOutcome {
+  allowed
+  denied
+  succeeded
+  failed
+  limited
+  escalated
+}
+
+// ============================================================================
+// §4 Identity and Access Domain
+// ============================================================================
+
+model IdentitySubject {
+  id                String                @id @default(uuid()) @db.Uuid
+  externalSubjectId String                @map("external_subject_id")
+  provider          String
+  status            IdentitySubjectStatus @default(active)
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt        DateTime?             @map("last_seen_at") @db.Timestamptz(6)
+
+  userAccount UserAccount?
+
+  @@unique([provider, externalSubjectId])
+  @@index([status])
+  @@map("identity_subjects")
+}
+
+model UserAccount {
+  id                    String        @id @default(uuid()) @db.Uuid
+  identitySubjectId     String        @unique @map("identity_subject_id") @db.Uuid
+  accountStatus         AccountStatus @default(active) @map("account_status")
+  preferredLanguage     String        @default("en") @map("preferred_language")
+  timezone              String        @default("Africa/Kigali")
+  onboardingCompletedAt DateTime?     @map("onboarding_completed_at") @db.Timestamptz(6)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt             DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  identitySubject IdentitySubject @relation(fields: [identitySubjectId], references: [id], onDelete: Restrict)
+  profile         UserProfile?
+  providerProfile ProviderProfile?
+
+  roles                   UserRole[]               @relation("UserAccountRoles")
+  grantedRoles            UserRole[]               @relation("RoleGrantedBy")
+  organizationMemberships OrganizationMembership[]
+  providerAssignments     ProviderAssignment[]     @relation("AssignedProvider")
+  citizenAssignments      ProviderAssignment[]     @relation("AssignedCitizen")
+  createdAssignments      ProviderAssignment[]     @relation("AssignmentCreatedBy")
+  providerFollowUps       ProviderFollowUp[]       @relation("FollowUpProvider")
+  citizenFollowUps        ProviderFollowUp[]       @relation("FollowUpCitizen")
+  consentRecords          ConsentRecord[]          @relation("UserConsentRecords")
+  recordedConsents        ConsentRecord[]          @relation("ConsentRecordedBy")
+  healthInputs            HealthInput[]
+  wellbeingCheckIns       WellbeingCheckIn[]
+  inputSnapshots          InputSnapshot[]
+  riskAssessments         RiskAssessment[]
+  citizenReferrals        Referral[]               @relation("ReferralCitizen")
+  providerReferrals       Referral[]               @relation("ReferralProvider")
+  createdReferrals        Referral[]               @relation("ReferralCreatedBy")
+  citizenConsultations    Consultation[]           @relation("ConsultationCitizen")
+  providerConsultations   Consultation[]           @relation("ConsultationProvider")
+  createdConsultations    Consultation[]           @relation("ConsultationCreatedBy")
+  notificationPreference  NotificationPreference?
+  notifications           Notification[]
+  reports                 Report[]
+  grantedReportAccesses   ReportAccess[]           @relation("ReportAccessGrantedTo")
+  issuedReportAccesses    ReportAccess[]           @relation("ReportAccessGrantedBy")
+  assistantConversations  AssistantConversation[]
+  deletionRequests        AccountDeletionRequest[]
+  exportRequests          DataExportRequest[]
+  idempotencyRecords      IdempotencyRecord[]
+
+  @@index([accountStatus])
+  @@map("user_accounts")
+}
+
+model UserProfile {
+  id                     String   @id @default(uuid()) @db.Uuid
+  userAccountId          String   @unique @map("user_account_id") @db.Uuid
+  displayName            String?  @map("display_name")
+  birthYear              Int?     @map("birth_year")
+  administrativeAreaCode String?  @map("administrative_area_code")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+
+  @@map("user_profiles")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        RoleCode @unique
+  description String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id            String    @id @default(uuid()) @db.Uuid
+  userAccountId String    @map("user_account_id") @db.Uuid
+  roleId        String    @map("role_id") @db.Uuid
+  grantedById   String?   @map("granted_by_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  userAccount UserAccount  @relation("UserAccountRoles", fields: [userAccountId], references: [id], onDelete: Restrict)
+  role        Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  grantedBy   UserAccount? @relation("RoleGrantedBy", fields: [grantedById], references: [id], onDelete: Restrict)
+
+  @@index([userAccountId, revokedAt])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Organization {
+  id               String             @id @default(uuid()) @db.Uuid
+  name             String
+  organizationType String             @map("organization_type")
+  status           OrganizationStatus @default(active)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships         OrganizationMembership[]
+  providerProfiles    ProviderProfile[]
+  providerAssignments ProviderAssignment[]
+  consultations       Consultation[]
+
+  @@index([status])
+  @@map("organizations")
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userAccountId  String           @map("user_account_id") @db.Uuid
+  roleCode       RoleCode         @map("role_code")
+  status         MembershipStatus @default(active)
+  startedAt      DateTime         @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt        DateTime?        @map("ended_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  userAccount  UserAccount  @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, userAccountId, status])
+  @@index([userAccountId, status])
+  @@map("organization_memberships")
+}
+
+model ProviderProfile {
+  id                     String    @id @default(uuid()) @db.Uuid
+  userAccountId          String    @unique @map("user_account_id") @db.Uuid
+  specialtyTags          String[]  @default([]) @map("specialty_tags")
+  licenseVerifiedAt      DateTime? @map("license_verified_at") @db.Timestamptz(6)
+  publicDirectoryVisible Boolean   @default(false) @map("public_directory_visible")
+  organizationId         String?   @map("organization_id") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount  UserAccount   @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([publicDirectoryVisible])
+  @@index([organizationId])
+  @@map("provider_profiles")
+}
+
+model ProviderAssignment {
+  id             String           @id @default(uuid()) @db.Uuid
+  providerUserId String           @map("provider_user_id") @db.Uuid
+  citizenUserId  String           @map("citizen_user_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  allowedScopes  String[]         @default([]) @map("allowed_scopes")
+  status         AssignmentStatus @default(active)
+  startsAt       DateTime         @map("starts_at") @db.Timestamptz(6)
+  endsAt         DateTime?        @map("ends_at") @db.Timestamptz(6)
+  createdById    String           @map("created_by_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  providerUser  UserAccount        @relation("AssignedProvider", fields: [providerUserId], references: [id], onDelete: Restrict)
+  citizenUser   UserAccount        @relation("AssignedCitizen", fields: [citizenUserId], references: [id], onDelete: Restrict)
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy     UserAccount        @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  followUps     ProviderFollowUp[]
+  consultations Consultation[]
+
+  @@index([providerUserId, citizenUserId, status])
+  @@index([citizenUserId, status])
+  @@index([organizationId, status])
+  @@map("provider_assignments")
+}
+
+model ProviderFollowUp {
+  id                     String    @id @default(uuid()) @db.Uuid
+  assignmentId           String    @map("assignment_id") @db.Uuid
+  providerUserId         String    @map("provider_user_id") @db.Uuid
+  citizenUserId          String    @map("citizen_user_id") @db.Uuid
+  referencedAssessmentId String?   @map("referenced_assessment_id") @db.Uuid
+  actionType             String    @map("action_type")
+  structuredNotes        Json      @map("structured_notes")
+  recommendedFollowUpAt  DateTime? @map("recommended_follow_up_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  assignment           ProviderAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  providerUser         UserAccount        @relation("FollowUpProvider", fields: [providerUserId], references: [id], onDelete: Restrict)
+  citizenUser          UserAccount        @relation("FollowUpCitizen", fields: [citizenUserId], references: [id], onDelete: Restrict)
+  referencedAssessment RiskAssessment?    @relation(fields: [referencedAssessmentId], references: [id], onDelete: Restrict)
+
+  @@index([citizenUserId, createdAt])
+  @@index([providerUserId, createdAt])
+  @@index([assignmentId])
+  @@map("provider_follow_ups")
+}
+
+// ============================================================================
+// §5 Consent Domain
+// ============================================================================
+
+model ConsentPurpose {
+  id                      String               @id @default(uuid()) @db.Uuid
+  code                    String
+  version                 String
+  title                   String
+  description             String
+  dataCategories          String[]             @default([]) @map("data_categories")
+  isRequiredForOnboarding Boolean              @default(false) @map("is_required_for_onboarding")
+  status                  ConsentPurposeStatus @default(draft)
+  createdAt               DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  consentRecords ConsentRecord[]
+
+  @@unique([code, version])
+  @@index([status])
+  @@map("consent_purposes")
+}
+
+model ConsentRecord {
+  id               String              @id @default(uuid()) @db.Uuid
+  userAccountId    String              @map("user_account_id") @db.Uuid
+  consentPurposeId String              @map("consent_purpose_id") @db.Uuid
+  status           ConsentRecordStatus @default(granted)
+  grantedAt        DateTime?           @map("granted_at") @db.Timestamptz(6)
+  withdrawnAt      DateTime?           @map("withdrawn_at") @db.Timestamptz(6)
+  expiresAt        DateTime?           @map("expires_at") @db.Timestamptz(6)
+  recordedById     String              @map("recorded_by_id") @db.Uuid
+  policyVersion    String              @map("policy_version")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount            UserAccount             @relation("UserConsentRecords", fields: [userAccountId], references: [id], onDelete: Restrict)
+  consentPurpose         ConsentPurpose          @relation(fields: [consentPurposeId], references: [id], onDelete: Restrict)
+  recordedBy             UserAccount             @relation("ConsentRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+  healthInputs           HealthInput[]
+  wellbeingCheckIns      WellbeingCheckIn[]
+  inputSnapshots         InputSnapshot[]
+  referrals              Referral[]
+  consultations          Consultation[]
+  assistantConversations AssistantConversation[]
+
+  @@index([userAccountId, consentPurposeId, status])
+  @@index([userAccountId, createdAt])
+  @@map("consent_records")
+}
+
+// ============================================================================
+// §6 Personal Health and Wellbeing Domain
+// ============================================================================
+
+model HealthInput {
+  id                String              @id @default(uuid()) @db.Uuid
+  userAccountId     String              @map("user_account_id") @db.Uuid
+  category          HealthInputCategory
+  fieldCode         String              @map("field_code")
+  numericValue      Float?              @map("numeric_value")
+  textValue         String?             @map("text_value")
+  unit              String?
+  observedAt        DateTime            @map("observed_at") @db.Timestamptz(6)
+  sourceType        DataSourceType      @map("source_type")
+  sourceReference   String?             @map("source_reference")
+  validFrom         DateTime?           @map("valid_from") @db.Timestamptz(6)
+  validUntil        DateTime?           @map("valid_until") @db.Timestamptz(6)
+  status            HealthInputStatus   @default(active)
+  supersedesInputId String?             @unique @map("supersedes_input_id") @db.Uuid
+  consentRecordId   String              @map("consent_record_id") @db.Uuid
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount     UserAccount   @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+  consentRecord   ConsentRecord @relation(fields: [consentRecordId], references: [id], onDelete: Restrict)
+  supersedesInput HealthInput?  @relation("HealthInputSupersession", fields: [supersedesInputId], references: [id], onDelete: Restrict)
+  supersededBy    HealthInput?  @relation("HealthInputSupersession")
+
+  @@index([userAccountId, fieldCode, status, observedAt])
+  @@index([userAccountId, observedAt])
+  @@map("health_inputs")
+}
+
+model WellbeingCheckIn {
+  id                   String              @id @default(uuid()) @db.Uuid
+  userAccountId        String              @map("user_account_id") @db.Uuid
+  questionnaireVersion String              @map("questionnaire_version")
+  responses            Json
+  completedAt          DateTime            @map("completed_at") @db.Timestamptz(6)
+  sourceType           DataSourceType      @map("source_type")
+  safetyStatus         CheckInSafetyStatus @default(normal) @map("safety_status")
+  escalationRequired   Boolean             @default(false) @map("escalation_required")
+  escalationCategory   String?             @map("escalation_category")
+  consentRecordId      String              @map("consent_record_id") @db.Uuid
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userAccount   UserAccount   @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+  consentRecord ConsentRecord @relation(fields: [consentRecordId], references: [id], onDelete: Restrict)
+
+  @@index([userAccountId, completedAt])
+  @@map("wellbeing_check_ins")
+}
+
+// ============================================================================
+// §7 Provenance and External-Source Domain
+// ============================================================================
+
+model DataSource {
+  id                    String         @id @default(uuid()) @db.Uuid
+  code                  String         @unique
+  name                  String
+  sourceType            DataSourceType @map("source_type")
+  owner                 String
+  purpose               String
+  trustStatus           String         @map("trust_status")
+  isCalculationApproved Boolean        @default(false) @map("is_calculation_approved")
+  termsReference        String?        @map("terms_reference")
+  lastReviewedAt        DateTime?      @map("last_reviewed_at") @db.Timestamptz(6)
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ingestionRecords          IngestionRecord[]
+  environmentalObservations EnvironmentalObservation[]
+  facilities                Facility[]
+
+  @@map("data_sources")
+}
+
+model IngestionRecord {
+  id             String          @id @default(uuid()) @db.Uuid
+  dataSourceId   String          @map("data_source_id") @db.Uuid
+  startedAt      DateTime        @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime?       @map("completed_at") @db.Timestamptz(6)
+  status         IngestionStatus @default(scheduled)
+  itemsReceived  Int             @default(0) @map("items_received")
+  itemsAccepted  Int             @default(0) @map("items_accepted")
+  errorCode      String?         @map("error_code")
+  errorSummary   String?         @map("error_summary")
+  sourceCursor   String?         @map("source_cursor")
+  idempotencyKey String?         @unique @map("idempotency_key")
+
+  dataSource   DataSource                 @relation(fields: [dataSourceId], references: [id], onDelete: Restrict)
+  observations EnvironmentalObservation[]
+
+  @@index([dataSourceId, startedAt])
+  @@map("ingestion_records")
+}
+
+model EnvironmentalObservation {
+  id                String                   @id @default(uuid()) @db.Uuid
+  dataSourceId      String                   @map("data_source_id") @db.Uuid
+  ingestionRecordId String?                  @map("ingestion_record_id") @db.Uuid
+  observationType   String                   @map("observation_type")
+  observedAt        DateTime                 @map("observed_at") @db.Timestamptz(6)
+  locationAreaId    String                   @map("location_area_id")
+  value             Float
+  unit              String
+  qualityStatus     ObservationQualityStatus @map("quality_status")
+  sourceTimestamp   DateTime                 @map("source_timestamp") @db.Timestamptz(6)
+  ingestedAt        DateTime                 @default(now()) @map("ingested_at") @db.Timestamptz(6)
+
+  dataSource      DataSource       @relation(fields: [dataSourceId], references: [id], onDelete: Restrict)
+  ingestionRecord IngestionRecord? @relation(fields: [ingestionRecordId], references: [id], onDelete: Restrict)
+
+  @@index([locationAreaId, observationType, observedAt])
+  @@index([dataSourceId, observedAt])
+  @@map("environmental_observations")
+}
+
+// ============================================================================
+// §8 Risk and AI Domain
+// ============================================================================
+
+model RiskUseCase {
+  id                      String               @id @default(uuid()) @db.Uuid
+  code                    String               @unique
+  name                    String
+  description             String
+  intendedUse             String               @map("intended_use")
+  excludedUse             String               @map("excluded_use")
+  requiredInputCategories String[]             @default([]) @map("required_input_categories")
+  status                  UseCaseStatus        @default(draft)
+  clinicalReviewStatus    ClinicalReviewStatus @default(draft) @map("clinical_review_status")
+  createdAt               DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ruleModelVersions RuleModelVersion[]
+  inputSnapshots    InputSnapshot[]
+  riskAssessments   RiskAssessment[]
+
+  @@index([status])
+  @@map("risk_use_cases")
+}
+
+model RuleModelVersion {
+  id                     String               @id @default(uuid()) @db.Uuid
+  riskUseCaseId          String               @map("risk_use_case_id") @db.Uuid
+  version                String
+  implementationType     ImplementationType   @map("implementation_type")
+  configurationReference String               @map("configuration_reference")
+  effectiveFrom          DateTime?            @map("effective_from") @db.Timestamptz(6)
+  retiredAt              DateTime?            @map("retired_at") @db.Timestamptz(6)
+  approvalStatus         ClinicalReviewStatus @default(draft) @map("approval_status")
+  limitations            String[]             @default([])
+  evaluationReference    String?              @map("evaluation_reference")
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  riskUseCase     RiskUseCase      @relation(fields: [riskUseCaseId], references: [id], onDelete: Restrict)
+  riskAssessments RiskAssessment[]
+
+  @@unique([riskUseCaseId, version])
+  @@map("rule_model_versions")
+}
+
+model InputSnapshot {
+  id                     String    @id @default(uuid()) @db.Uuid
+  userAccountId          String    @map("user_account_id") @db.Uuid
+  riskUseCaseId          String    @map("risk_use_case_id") @db.Uuid
+  consentRecordId        String    @map("consent_record_id") @db.Uuid
+  calculatedForTimestamp DateTime  @map("calculated_for_timestamp") @db.Timestamptz(6)
+  inputPayload           Json      @map("input_payload")
+  payloadSha256          String    @map("payload_sha256")
+  dataQualityStatus      String    @map("data_quality_status")
+  expiresAt              DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userAccount    UserAccount     @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+  riskUseCase    RiskUseCase     @relation(fields: [riskUseCaseId], references: [id], onDelete: Restrict)
+  consentRecord  ConsentRecord   @relation(fields: [consentRecordId], references: [id], onDelete: Restrict)
+  riskAssessment RiskAssessment?
+
+  @@index([userAccountId, riskUseCaseId, createdAt])
+  @@map("input_snapshots")
+}
+
+model RiskAssessment {
+  id                   String               @id @default(uuid()) @db.Uuid
+  userAccountId        String               @map("user_account_id") @db.Uuid
+  riskUseCaseId        String               @map("risk_use_case_id") @db.Uuid
+  ruleModelVersionId   String               @map("rule_model_version_id") @db.Uuid
+  inputSnapshotId      String               @unique @map("input_snapshot_id") @db.Uuid
+  status               RiskAssessmentStatus @default(queued)
+  level                RiskLevel?
+  calculatedAt         DateTime?            @map("calculated_at") @db.Timestamptz(6)
+  contributingFactors  Json                 @default("[]") @map("contributing_factors")
+  limitations          String[]             @default([])
+  recommendedNextSteps Json                 @default("[]") @map("recommended_next_steps")
+  safetyMetadata       Json                 @default("{}") @map("safety_metadata")
+  supersededById       String?              @map("superseded_by_id") @db.Uuid
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount          UserAccount        @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+  riskUseCase          RiskUseCase        @relation(fields: [riskUseCaseId], references: [id], onDelete: Restrict)
+  ruleModelVersion     RuleModelVersion   @relation(fields: [ruleModelVersionId], references: [id], onDelete: Restrict)
+  inputSnapshot        InputSnapshot      @relation(fields: [inputSnapshotId], references: [id], onDelete: Restrict)
+  supersededBy         RiskAssessment?    @relation("RiskAssessmentSupersession", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes           RiskAssessment[]   @relation("RiskAssessmentSupersession")
+  providerFollowUps    ProviderFollowUp[]
+  assistantTurnRefs    AssistantTurn[]
+
+  @@index([userAccountId, riskUseCaseId, calculatedAt])
+  @@index([userAccountId, createdAt])
+  @@index([ruleModelVersionId])
+  @@map("risk_assessments")
+}
+
+// ============================================================================
+// §9 Healthcare Access Domain
+// ============================================================================
+
+model Facility {
+  id                     String                                 @id @default(uuid()) @db.Uuid
+  name                   String
+  facilityType           FacilityType                           @map("facility_type")
+  status                 FacilityStatus                         @default(active)
+  address                String
+  administrativeAreaCode String                                 @map("administrative_area_code")
+  latitude               Float
+  longitude              Float
+  location               Unsupported("geography(Point, 4326)")?
+  contactPhone           String?                                @map("contact_phone")
+  contactEmail           String?                                @map("contact_email")
+  openingHoursSummary    String?                                @map("opening_hours_summary")
+  dataSourceId           String                                 @map("data_source_id") @db.Uuid
+  sourceReference        String                                 @map("source_reference")
+  lastVerifiedAt         DateTime                               @map("last_verified_at") @db.Timestamptz(6)
+  verificationNote       String?                                @map("verification_note")
+  createdAt              DateTime                               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  dataSource DataSource        @relation(fields: [dataSourceId], references: [id], onDelete: Restrict)
+  services   FacilityService[]
+  referrals  Referral[]
+
+  @@unique([dataSourceId, sourceReference])
+  @@index([administrativeAreaCode, facilityType, status])
+  @@map("facilities")
+}
+
+model FacilityService {
+  id             String   @id @default(uuid()) @db.Uuid
+  facilityId     String   @map("facility_id") @db.Uuid
+  serviceCode    String   @map("service_code")
+  serviceName    String   @map("service_name")
+  status         String   @default("active")
+  lastVerifiedAt DateTime @map("last_verified_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@unique([facilityId, serviceCode])
+  @@index([serviceCode, status])
+  @@map("facility_services")
+}
+
+model Referral {
+  id              String         @id @default(uuid()) @db.Uuid
+  citizenUserId   String         @map("citizen_user_id") @db.Uuid
+  providerUserId  String?        @map("provider_user_id") @db.Uuid
+  facilityId      String?        @map("facility_id") @db.Uuid
+  createdById     String         @map("created_by_id") @db.Uuid
+  type            ReferralType
+  status          ReferralStatus @default(requested)
+  purpose         String
+  consentRecordId String         @map("consent_record_id") @db.Uuid
+  scheduledAt     DateTime?      @map("scheduled_at") @db.Timestamptz(6)
+  notesSummary    String?        @map("notes_summary")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  citizenUser   UserAccount   @relation("ReferralCitizen", fields: [citizenUserId], references: [id], onDelete: Restrict)
+  providerUser  UserAccount?  @relation("ReferralProvider", fields: [providerUserId], references: [id], onDelete: Restrict)
+  facility      Facility?     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  createdBy     UserAccount   @relation("ReferralCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  consentRecord ConsentRecord @relation(fields: [consentRecordId], references: [id], onDelete: Restrict)
+
+  @@index([citizenUserId, status, createdAt])
+  @@index([providerUserId, status])
+  @@index([facilityId, status])
+  @@map("referrals")
+}
+
+model Consultation {
+  id              String             @id @default(uuid()) @db.Uuid
+  citizenUserId   String             @map("citizen_user_id") @db.Uuid
+  providerUserId  String             @map("provider_user_id") @db.Uuid
+  organizationId  String             @map("organization_id") @db.Uuid
+  assignmentId    String?            @map("assignment_id") @db.Uuid
+  createdById     String             @map("created_by_id") @db.Uuid
+  status          ConsultationStatus @default(requested)
+  purpose         String
+  consentRecordId String             @map("consent_record_id") @db.Uuid
+  requestedForAt  DateTime?          @map("requested_for_at") @db.Timestamptz(6)
+  scheduledAt     DateTime?          @map("scheduled_at") @db.Timestamptz(6)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  citizenUser   UserAccount         @relation("ConsultationCitizen", fields: [citizenUserId], references: [id], onDelete: Restrict)
+  providerUser  UserAccount         @relation("ConsultationProvider", fields: [providerUserId], references: [id], onDelete: Restrict)
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignment    ProviderAssignment? @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  createdBy     UserAccount         @relation("ConsultationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  consentRecord ConsentRecord       @relation(fields: [consentRecordId], references: [id], onDelete: Restrict)
+
+  @@index([citizenUserId, status, createdAt])
+  @@index([providerUserId, status])
+  @@index([organizationId, status])
+  @@map("consultations")
+}
+
+// ============================================================================
+// §10 Notification, Reporting, Assistant, and Privacy Lifecycle Domain
+// ============================================================================
+
+model NotificationPreference {
+  id                String   @id @default(uuid()) @db.Uuid
+  userAccountId     String   @unique @map("user_account_id") @db.Uuid
+  inAppEnabled      Boolean  @default(true) @map("in_app_enabled")
+  emailEnabled      Boolean  @default(false) @map("email_enabled")
+  smsEnabled        Boolean  @default(false) @map("sms_enabled")
+  pushEnabled       Boolean  @default(false) @map("push_enabled")
+  enabledCategories String[] @default([]) @map("enabled_categories")
+  quietHoursStart   String?  @map("quiet_hours_start")
+  quietHoursEnd     String?  @map("quiet_hours_end")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+
+  @@map("notification_preferences")
+}
+
+model Notification {
+  id                     String              @id @default(uuid()) @db.Uuid
+  userAccountId          String              @map("user_account_id") @db.Uuid
+  category               String
+  channel                NotificationChannel @default(in_app)
+  titleKey               String              @map("title_key")
+  bodyKey                String              @map("body_key")
+  inAppTargetPath        String?             @map("in_app_target_path")
+  sourceReference        String?             @map("source_reference")
+  contentTemplateVersion String              @map("content_template_version")
+  status                 NotificationStatus  @default(pending)
+  scheduledAt            DateTime            @default(now()) @map("scheduled_at") @db.Timestamptz(6)
+  sentAt                 DateTime?           @map("sent_at") @db.Timestamptz(6)
+  readAt                 DateTime?           @map("read_at") @db.Timestamptz(6)
+  failedAt               DateTime?           @map("failed_at") @db.Timestamptz(6)
+  failureCode            String?             @map("failure_code")
+  retryCount             Int                 @default(0) @map("retry_count")
+  providerMessageId      String?             @map("provider_message_id")
+  idempotencyKey         String?             @unique @map("idempotency_key")
+  createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+
+  @@index([userAccountId, status, createdAt])
+  @@map("notifications")
+}
+
+model Report {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userAccountId      String       @map("user_account_id") @db.Uuid
+  status             ReportStatus @default(requested)
+  periodStart        DateTime     @map("period_start") @db.Timestamptz(6)
+  periodEnd          DateTime     @map("period_end") @db.Timestamptz(6)
+  includedCategories String[]     @default([]) @map("included_categories")
+  sourceSummary      Json         @default("{}") @map("source_summary")
+  templateVersion    String       @map("template_version")
+  objectStorageKey   String?      @map("object_storage_key")
+  contentSha256      String?      @map("content_sha256")
+  failureCode        String?      @map("failure_code")
+  expiresAt          DateTime?    @map("expires_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount UserAccount    @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+  accesses    ReportAccess[]
+
+  @@index([userAccountId, status, createdAt])
+  @@map("reports")
+}
+
+model ReportAccess {
+  id              String    @id @default(uuid()) @db.Uuid
+  reportId        String    @map("report_id") @db.Uuid
+  grantedToUserId String    @map("granted_to_user_id") @db.Uuid
+  grantedByUserId String    @map("granted_by_user_id") @db.Uuid
+  purpose         String
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  report        Report      @relation(fields: [reportId], references: [id], onDelete: Restrict)
+  grantedToUser UserAccount @relation("ReportAccessGrantedTo", fields: [grantedToUserId], references: [id], onDelete: Restrict)
+  grantedByUser UserAccount @relation("ReportAccessGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([reportId, grantedToUserId])
+  @@index([grantedToUserId, expiresAt])
+  @@map("report_accesses")
+}
+
+model AssistantConversation {
+  id              String    @id @default(uuid()) @db.Uuid
+  userAccountId   String    @map("user_account_id") @db.Uuid
+  consentRecordId String    @map("consent_record_id") @db.Uuid
+  status          String    @default("active")
+  topicCategory   String?   @map("topic_category")
+  turnCount       Int       @default(0) @map("turn_count")
+  lastMessageAt   DateTime? @map("last_message_at") @db.Timestamptz(6)
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userAccount   UserAccount     @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+  consentRecord ConsentRecord   @relation(fields: [consentRecordId], references: [id], onDelete: Restrict)
+  turns         AssistantTurn[]
+
+  @@index([userAccountId, createdAt])
+  @@map("assistant_conversations")
+}
+
+model AssistantTurn {
+  id                     String   @id @default(uuid()) @db.Uuid
+  conversationId         String   @map("conversation_id") @db.Uuid
+  role                   String
+  responseType           String?  @map("response_type")
+  referencedAssessmentId String?  @map("referenced_assessment_id") @db.Uuid
+  adapterVersion         String?  @map("adapter_version")
+  escalationTriggered    Boolean  @default(false) @map("escalation_triggered")
+  safetyReasonCodes      String[] @default([]) @map("safety_reason_codes")
+  boundedSummaryText     String?  @map("bounded_summary_text")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation         AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  referencedAssessment RiskAssessment?       @relation(fields: [referencedAssessmentId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, createdAt])
+  @@map("assistant_turns")
+}
+
+model AccountDeletionRequest {
+  id                String                @id @default(uuid()) @db.Uuid
+  userAccountId     String                @map("user_account_id") @db.Uuid
+  status            DeletionRequestStatus @default(requested)
+  requestedAt       DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  gracePeriodEndsAt DateTime              @map("grace_period_ends_at") @db.Timestamptz(6)
+  completedAt       DateTime?             @map("completed_at") @db.Timestamptz(6)
+  cancelledAt       DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+
+  @@index([userAccountId, status])
+  @@map("account_deletion_requests")
+}
+
+model DataExportRequest {
+  id               String              @id @default(uuid()) @db.Uuid
+  userAccountId    String              @map("user_account_id") @db.Uuid
+  status           ExportRequestStatus @default(requested)
+  objectStorageKey String?             @map("object_storage_key")
+  expiresAt        DateTime?           @map("expires_at") @db.Timestamptz(6)
+  requestedAt      DateTime            @default(now()) @map("requested_at") @db.Timestamptz(6)
+  completedAt      DateTime?           @map("completed_at") @db.Timestamptz(6)
+
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+
+  @@index([userAccountId, status])
+  @@map("data_export_requests")
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  userAccountId  String   @map("user_account_id") @db.Uuid
+  idempotencyKey String   @map("idempotency_key")
+  routeKey       String   @map("route_key")
+  requestSha256  String   @map("request_sha256")
+  statusCode     Int      @map("status_code")
+  responseBody   Json     @map("response_body")
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userAccount UserAccount @relation(fields: [userAccountId], references: [id], onDelete: Restrict)
+
+  @@unique([userAccountId, routeKey, idempotencyKey])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}
+
+// ============================================================================
+// §11 Audit Domain (Append-only — enforced by PostgreSQL trigger)
+// ============================================================================
+
+model AuditEvent {
+  id             String       @id @default(uuid()) @db.Uuid
+  occurredAt     DateTime     @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actorId        String?      @map("actor_id")
+  actorType      ActorType    @map("actor_type")
+  action         String
+  resourceType   String       @map("resource_type")
+  resourceId     String?      @map("resource_id")
+  outcome        AuditOutcome
+  requestId      String       @map("request_id")
+  organizationId String?      @map("organization_id") @db.Uuid
+  purposeCode    String?      @map("purpose_code")
+  metadata       Json         @default("{}")
+
+  @@index([actorId, occurredAt])
+  @@index([resourceType, resourceId, occurredAt])
+  @@index([requestId])
+  @@index([occurredAt])
+  @@map("audit_events")
+}

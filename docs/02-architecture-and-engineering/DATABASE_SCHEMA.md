@@ -62,16 +62,16 @@ Candidate attributes:
 
 Do not duplicate passwords, access tokens, recovery secrets, or full identity-provider records in the application database.
 
-### 4.2 User account
+### 4.2 User account (`user_accounts`)
 
-Application-level account record linked one-to-one to an identity subject.
+Application-level account record (`user_accounts` per [ADR-012](../06-technical-decisions/DECISIONS.md)) linked one-to-one to an identity subject.
 
 Candidate attributes:
 
 - `id`
 - `identity_subject_id` — unique foreign key
 - `account_status`
-- `preferred_language` — only after language scope is approved
+- `preferred_language` — default `en`, supporting structured localization keys (`ADR-010`)
 - `timezone`
 - `created_at`, `updated_at`, `deleted_at` where policy requires it
 
@@ -79,7 +79,7 @@ Candidate attributes:
 
 Candidate entities:
 
-- `role`
+- `role` (`citizen`, `provider`, `facility_user`, `community_health_worker`, `platform_admin` per `ADR-011`)
 - `organization`
 - `organization_membership`
 - `provider_profile`
@@ -91,7 +91,19 @@ An assignment should specify the provider, target user or approved group, organi
 
 ### 5.1 Consent purpose
 
-Defines a documented reason for processing, such as storing a wellbeing check-in, calculating an approved risk indicator, sharing information with an assigned provider, or using an external integration.
+Defines a documented reason for processing. Per [ADR-015](../06-technical-decisions/DECISIONS.md), the canonical versioned (`version: "v1"`) `consent_purpose.code` values for backend enforcement are:
+
+- `health_input_storage`
+- `preventive_risk_calculation`
+- `wellbeing_check_ins`
+- `environmental_context`
+- `facility_location_search`
+- `provider_data_sharing`
+- `notifications_delivery`
+- `report_generation`
+- `assistant_conversations`
+
+*(Approved for synthetic development/testing; final production wording remains gated on `OPEN-007` and `OPEN-008`.)*
 
 Candidate attributes:
 
@@ -122,7 +134,7 @@ Consent changes must be auditable. Withdrawal must define whether it stops futur
 
 ### 6.1 Health input
 
-Stores an approved user-provided or imported data point. The first release should use an allowlist of fields rather than accepting arbitrary clinical data.
+Stores an approved user-provided or imported data point. The first release uses an allowlist of fields (`ADR-010`) rather than accepting arbitrary clinical data.
 
 Candidate attributes:
 
@@ -135,11 +147,12 @@ Candidate attributes:
 - `observed_at`
 - `source_type` — self-reported, imported, provider-recorded, or generated
 - `source_reference`
+- `supersedes_input_id` — nullable self-referencing foreign key to the superseded `health_inputs.id` (`ADR-017`)
 - `created_at`, `updated_at`
 - `valid_from`, `valid_until`, where applicable
-- `status` — active, corrected, superseded, or retracted
+- `status` — `active`, `superseded`, or `retracted`
 
-Do not use unrestricted free-text fields for sensitive clinical information unless a specific reviewed use case requires them.
+Per [ADR-017](../06-technical-decisions/DECISIONS.md), corrections (`PATCH /api/v1/me/health-inputs/{inputId}`) mark the existing row `superseded` and insert a new `active` row referencing `supersedes_input_id` rather than destructively overwriting historical values. Do not use unrestricted free-text fields for sensitive clinical information unless a specific reviewed use case requires them.
 
 ### 6.2 Wellbeing check-in
 
@@ -453,15 +466,17 @@ The likely minimum first-release set is:
 
 Device connections, full clinical records, EHR resources, live consultation content, advanced model artifacts, and broad public-health datasets remain later or separately approved domains.
 
-## 18. Open schema decisions
+## 18. Open and resolved schema decisions
 
-- Final application naming: `users`, `profiles`, or `user_accounts`
-- Exact first-release health-input fields and types
-- Whether provider access is included in the first release
-- Consent granularity and withdrawal behavior
-- Location precision and geographic representation
-- Risk-level vocabulary and factor representation
-- Whether input snapshots store references, bounded summaries, or encrypted copies
-- Retention, deletion, and audit periods
-- Database migration and ORM conventions
-- Row-level security and database-role strategy
+### Resolved
+- **Application account table naming and ORM/migrations:** **Resolved in [ADR-012](../06-technical-decisions/DECISIONS.md)** — `user_accounts` table managed via Prisma ORM and Prisma Migrate (`prisma migrate deploy`).
+- **First vertical-slice health-input fields and risk use case:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md) & [ADR-015](../06-technical-decisions/DECISIONS.md)** — `lifestyle_ncd_preventive` (`rules-v1.0.0`) and four allowlisted self-reported inputs (`max_age_hours: 720`).
+- **Canonical consent purpose codes (`v1`):** **Resolved in [ADR-015](../06-technical-decisions/DECISIONS.md)** — nine `v1` purpose codes seeded for synthetic development/testing (`OPEN-007`/`OPEN-008` gate production wording).
+- **Risk-level vocabulary:** **Resolved in [ADR-014](../06-technical-decisions/DECISIONS.md)** — `low | moderate | high` when `status = 'complete'`, and `null` when `limited`, `failed`, `queued`, or `processing`.
+- **Health-input correction traceability and runtime provider gating:** **Resolved in [ADR-017](../06-technical-decisions/DECISIONS.md)** — immutable supersession via `supersedes_input_id`, and runtime circuit breaker `FEATURE_PROVIDER_PORTAL_ENABLED` pending `OPEN-009`.
+
+### Remaining pre-production decisions
+- Production provider portal activation (`OPEN-009` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Production data retention, deletion grace periods, consent-withdrawal archival, and audit retention periods (`OPEN-008`)
+- Location grid/area precision for live Rwanda environmental feeds (`OPEN-010`)
+- Optional PostgreSQL Row-Level Security (RLS) defense-in-depth alongside application-layer guards (`OPEN-012`)

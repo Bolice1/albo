@@ -1,0 +1,115 @@
+{
+  "synthetic": true,
+  "source": "synthetic_test_fixture",
+  "dataset_version": "eval-lifestyle-v1.0.0",
+  "use_case_code": "lifestyle_ncd_preventive",
+  "rule_model_version": "rules-v1.0.0",
+  "calculated_for_timestamp": "2026-11-20T12:00:00Z",
+  "cases": [
+    {
+      "case_id": "golden_low_0_points_all_protective",
+      "description": "0 points: active >=150 min, never tobacco, 8h sleep, 5 servings fruit/veg -> low",
+      "health_inputs": [
+        {"field_code": "physical_activity_minutes_per_week", "value": 180, "unit": "min/week", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "tobacco_use_status", "value": "never", "unit": null, "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "sleep_hours_avg", "value": 8.0, "unit": "hours/day", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "diet_fruit_veg_servings_per_day", "value": 5, "unit": "servings/day", "observed_at": "2026-11-19T08:00:00Z"}
+      ],
+      "expected_status": "complete",
+      "expected_level": "low",
+      "expected_factor_codes": [
+        "physical_activity_meets_guideline",
+        "no_tobacco_use",
+        "sleep_duration_adequate",
+        "fruit_veg_intake_adequate"
+      ]
+    },
+    {
+      "case_id": "golden_low_1_point_upper_boundary_neutral_fruit_veg",
+      "description": "1 point: 120 min activity (+1), never tobacco (+0), 3 servings fruit/veg (+0 neutral, no factor) -> low",
+      "health_inputs": [
+        {"field_code": "physical_activity_minutes_per_week", "value": 120, "unit": "min/week", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "tobacco_use_status", "value": "never", "unit": null, "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "sleep_hours_avg", "value": 7.5, "unit": "hours/day", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "diet_fruit_veg_servings_per_day", "value": 3, "unit": "servings/day", "observed_at": "2026-11-19T08:00:00Z"}
+      ],
+      "expected_status": "complete",
+      "expected_level": "low",
+      "expected_factor_codes": [
+        "physical_activity_below_guideline",
+        "no_tobacco_use",
+        "sleep_duration_adequate"
+      ]
+    },
+    {
+      "case_id": "golden_moderate_2_points_lower_boundary",
+      "description": "2 points: 60 min activity (+2), never tobacco (+0), 7h sleep (+0), 4 servings fruit/veg (neutral) -> moderate",
+      "health_inputs": [
+        {"field_code": "physical_activity_minutes_per_week", "value": 60, "unit": "min/week", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "tobacco_use_status", "value": "never", "unit": null, "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "sleep_hours_avg", "value": 7, "unit": "hours/day", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "diet_fruit_veg_servings_per_day", "value": 4, "unit": "servings/day", "observed_at": "2026-11-19T08:00:00Z"}
+      ],
+      "expected_status": "complete",
+      "expected_level": "moderate",
+      "expected_factor_codes": [
+        "physical_activity_very_low",
+        "no_tobacco_use",
+        "sleep_duration_adequate"
+      ]
+    },
+    {
+      "case_id": "golden_moderate_3_points_current_tobacco_floor",
+      "description": "3 points: 200 min activity (+0), current tobacco (+3 + moderate floor), 8h sleep (+0), 6 servings (+0) -> moderate",
+      "health_inputs": [
+        {"field_code": "physical_activity_minutes_per_week", "value": 200, "unit": "min/week", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "tobacco_use_status", "value": "current", "unit": "status", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "sleep_hours_avg", "value": 8.0, "unit": "hours/day", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "diet_fruit_veg_servings_per_day", "value": 6, "unit": "servings/day", "observed_at": "2026-11-19T08:00:00Z"}
+      ],
+      "expected_status": "complete",
+      "expected_level": "moderate",
+      "expected_factor_codes": [
+        "current_tobacco_use",
+        "physical_activity_meets_guideline",
+        "sleep_duration_adequate",
+        "fruit_veg_intake_adequate"
+      ]
+    },
+    {
+      "case_id": "golden_high_4_points_lower_boundary",
+      "description": "4 points: 100 min activity (+1), current tobacco (+3) -> high",
+      "health_inputs": [
+        {"field_code": "physical_activity_minutes_per_week", "value": 100, "unit": "min/week", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "tobacco_use_status", "value": "current", "unit": null, "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "sleep_hours_avg", "value": 7.0, "unit": "hours/day", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "diet_fruit_veg_servings_per_day", "value": 2, "unit": "servings/day", "observed_at": "2026-11-19T08:00:00Z"}
+      ],
+      "expected_status": "complete",
+      "expected_level": "high",
+      "expected_factor_codes": [
+        "current_tobacco_use",
+        "physical_activity_below_guideline",
+        "sleep_duration_adequate"
+      ]
+    },
+    {
+      "case_id": "golden_high_7_points_maximum",
+      "description": "7 points: 30 min activity (+2), current tobacco (+3), 4.5h sleep (+1), 1 serving fruit/veg (+1) -> high",
+      "health_inputs": [
+        {"field_code": "physical_activity_minutes_per_week", "value": 30, "unit": "min/week", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "tobacco_use_status", "value": "current", "unit": null, "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "sleep_hours_avg", "value": 4.5, "unit": "hours/day", "observed_at": "2026-11-19T08:00:00Z"},
+        {"field_code": "diet_fruit_veg_servings_per_day", "value": 1, "unit": "servings/day", "observed_at": "2026-11-19T08:00:00Z"}
+      ],
+      "expected_status": "complete",
+      "expected_level": "high",
+      "expected_factor_codes": [
+        "current_tobacco_use",
+        "physical_activity_very_low",
+        "sleep_duration_outside_recommended_range",
+        "fruit_veg_intake_low"
+      ]
+    }
+  ]
+}

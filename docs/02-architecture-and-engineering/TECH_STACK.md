@@ -22,28 +22,30 @@ Technology choices are proposed decisions. A tool is not considered adopted unti
 
 | Area | Proposed technology | First-release position |
 |---|---|---|
-| Web application | Next.js + TypeScript | Adopt unless requirements change |
-| UI and styling | Tailwind CSS + shadcn/ui | Adopt selectively |
-| Core API | NestJS + TypeScript | Adopt as modular monolith |
-| AI and analytics | Python + FastAPI | Adopt as separate specialized service |
-| Primary database | PostgreSQL | Adopt |
-| Geographic data | PostGIS | Adopt only for approved spatial queries |
-| Database access | Prisma or approved typed ORM | Validate and select one |
-| Cache and jobs | Redis + BullMQ or equivalent | Add when background work requires it |
-| Risk engine | TypeScript/Python rules and weighted scoring | Adopt first |
-| Machine learning | scikit-learn/XGBoost when justified | Later, after validation |
+| Web application | Next.js + TypeScript | Target UI stack (deferred to separate frontend onboarding track per [ADR-016](../06-technical-decisions/DECISIONS.md)) |
+| UI and styling | Tailwind CSS + shadcn/ui | Adopt selectively when `frontend/` is onboarded (`ADR-016`) |
+| Core API & package runtime | NestJS + TypeScript + **Bun** (`bun.lock`) | Adopted as modular monolith (`ADR-001`, `ADR-016`) |
+| AI and analytics | Python 3.12 + **`uv`** (`uv.lock`) + FastAPI | Adopted as separate specialized service (`ADR-001`, `ADR-016`) |
+| Primary database | PostgreSQL (`postgis/postgis:16-3.4` locally) | Adopted (`ADR-008`, `ADR-016`) |
+| Geographic data | PostGIS | Adopted only for approved spatial queries (`ADR-008`) |
+| Database access | **Prisma ORM** + **Prisma Migrate** | Adopted (`ADR-012`) |
+| Cache and jobs | Redis (`redis:7-alpine` locally) + BullMQ | Adopted for cache, rate limits, and bounded async jobs (`ADR-008`) |
+| Risk engine | Python deterministic rules and weighted scoring (`rules-v1.0.0`) | Adopted first (`ADR-002`, `ADR-010`) |
+| Machine learning | scikit-learn/XGBoost when justified | Later, after validation (`ADR-002`) |
 | Experiment tracking | MLflow or approved equivalent | Later, when model experiments begin |
-| Authentication | OIDC provider, Keycloak, or confirmed Supabase Auth boundary | Select one |
-| API contract | OpenAPI/Swagger | Adopt |
-| File storage | Private S3-compatible object storage | Add for reports/documents |
-| Testing | Jest, Pytest, Playwright | Adopt by layer |
-| Packaging | Docker | Adopt for reproducible environments |
-| Observability | OpenTelemetry + approved metrics/logging backend | Adopt incrementally |
-| CI/CD | Repository-supported CI pipeline | Define before deployment |
+| Authentication | Standards-based OIDC/JWT (Supabase Auth cloud default + offline test signer) | Adopted (`ADR-005`, `ADR-011`) |
+| API contract | OpenAPI/Swagger | Adopted |
+| File storage | Private S3-compatible object storage (`minio/minio` in local/CI) | Adopted for private reports with presigned URLs (`ADR-016`, `ADR-017`) |
+| Testing | Jest + Supertest (via Bun), Pytest (via `uv`), Playwright (deferred with `frontend/`) | Adopted by layer (`ADR-016`) |
+| Packaging | Docker + Docker Compose | Adopted for reproducible environments (`ADR-008`, `ADR-016`) |
+| Observability | OpenTelemetry + approved metrics/logging backend | Adopt incrementally (`OPEN-012`) |
+| CI/CD | **GitHub Actions** for CI; production CD target in `OPEN-012` | Adopted for CI (`ADR-016`) |
 
 ## 3. Web application
 
 ### Next.js + TypeScript
+
+*(Note: Per [ADR-016](../06-technical-decisions/DECISIONS.md), `frontend/` scaffolding is deferred to a separate onboarding track while `backend/`, `ai-services/`, `infrastructure/`, and CI are onboarded first.)*
 
 **Purpose:** Citizen, provider, onboarding, dashboard, map, report, and administration interfaces.
 
@@ -76,14 +78,16 @@ Technology choices are proposed decisions. A tool is not considered adopted unti
 
 ## 4. Core backend
 
-### NestJS + TypeScript
+### NestJS + TypeScript (Bun toolchain)
 
 **Purpose:** Public API, authentication integration, authorization, consent, domain workflows, persistence coordination, integrations, jobs, and audit events.
+
+**Toolchain ([ADR-016](../06-technical-decisions/DECISIONS.md)):** **Bun** (`bun install --frozen-lockfile`, `bun run ...`) replaces `npm`/`pnpm` as the package manager, script runner, and container runtime for `backend/`.
 
 **Why it fits:**
 
 - Modular structure supports the proposed modular-monolith architecture
-- TypeScript provides consistent types with the frontend
+- TypeScript provides consistent types across API contracts
 - Dependency injection supports testing and replaceable adapters
 - Guards, pipes, interceptors, and validation support secure API boundaries
 - OpenAPI integration supports documented contracts
@@ -98,17 +102,17 @@ Technology choices are proposed decisions. A tool is not considered adopted unti
 
 ### ORM and database access
 
-**Proposed selection:** Prisma, subject to validation.
+**Adopted selection ([ADR-012](../06-technical-decisions/DECISIONS.md)):** **Prisma ORM** and **Prisma Migrate** (`prisma migrate deploy` in production, never `db push`), using `user_accounts` as the standardized primary application account table.
 
-Prisma is a candidate because it provides typed access, migrations, and a developer-friendly schema workflow. TypeORM or another tool may be considered if the team's operational or relational requirements justify it.
-
-The team must select one primary ORM/migration approach before implementation begins. Multiple competing database-access patterns are not allowed without a recorded decision.
+Multiple competing database-access patterns are not allowed without a recorded decision.
 
 ## 5. AI and analytics service
 
-### Python + FastAPI
+### Python 3.12 + `uv` + FastAPI
 
 **Purpose:** Rules, weighted scoring, data processing, model adapters, evaluation endpoints, and later machine-learning workflows.
+
+**Toolchain ([ADR-016](../06-technical-decisions/DECISIONS.md)):** **Python 3.12** (`python:3.12-slim`) managed deterministically by **`uv`** (`pyproject.toml` + `uv.lock`, `uv sync --frozen`) with `ruff`, `mypy --strict`, and `pytest`.
 
 **Why it fits:**
 
@@ -170,23 +174,18 @@ PostgreSQL is the primary source of truth. It must not be replaced by Redis, an 
 
 ## 7. Authentication and authorization
 
-### OIDC provider, Keycloak, or confirmed Supabase Auth boundary
+### Standards-based OIDC / JWT boundary ([ADR-011](../06-technical-decisions/DECISIONS.md))
 
-The initial recommendation is to use a standards-based identity provider rather than implementing passwords and token issuance inside Albo.
+Per `ADR-005` and `ADR-011`, Albo delegates authentication and token issuance to a standards-based OIDC/JWT boundary rather than implementing passwords inside Albo:
 
-Candidate options include:
+- **Cloud staging/production default:** **Supabase Auth** (satisfying `DP-003` while keeping `auth.users` isolated from clients).
+- **Local development and CI (`test`):** Deterministic offline OIDC-compatible JWT signer issuing identical `iss`, `aud`, `exp`, and `sub` claims so automated suites run 100% offline.
 
-- Managed OIDC provider
-- Keycloak when self-hosted identity control is required
-- Supabase Auth if the current platform remains the selected identity boundary
-
-The final choice must consider cost, hosting, team capability, account recovery, MFA, token claims, role integration, auditability, data residency, and operational burden.
-
-Regardless of provider:
+Regardless of environment:
 
 - The core API validates tokens.
 - Identity-provider-managed tables are not exposed to clients.
-- Albo stores controlled application records linked to the provider subject ID.
+- Albo stores controlled application records (`user_accounts`) linked to the provider subject ID.
 - Roles, consent, assignments, and resource access remain Albo policy decisions.
 
 ## 8. API and contracts
@@ -313,36 +312,33 @@ Before a technology is marked adopted, confirm:
 - It has an exit or replacement path where vendor lock-in matters.
 - The choice is recorded in the appropriate decision record.
 
-## 15. Proposed first-release stack
+## 15. Adopted first-release stack
 
-Subject to the open decisions, the first implementation should use:
+Per `ADR-008`, `ADR-011`, `ADR-012`, `ADR-016`, and `ADR-017`, the implementation stack uses:
 
 ```text
-Next.js + TypeScript
-Tailwind CSS + selected shadcn/ui components
-NestJS + TypeScript modular monolith
-Python + FastAPI rules/analytics service
-PostgreSQL
-PostGIS for approved facility/location queries
-One selected typed ORM and migration tool
-Redis + background worker only where required
+Next.js + TypeScript + Tailwind CSS + shadcn/ui (deferred to separate frontend onboarding track per ADR-016)
+NestJS + TypeScript modular monolith (Bun toolchain — bun.lock, bun install --frozen-lockfile)
+Python 3.12 + uv (uv.lock) + FastAPI rules/analytics service
+PostgreSQL + PostGIS (postgis/postgis:16-3.4 locally)
+Prisma ORM + Prisma Migrate
+Redis (redis:7-alpine locally) + BullMQ job worker
+Private S3-compatible object storage (minio/minio locally; presigned report URLs)
 OpenAPI/Swagger
-Jest + Pytest + Playwright
-Docker
+Jest + Supertest + Pytest (plus Playwright when frontend/ is onboarded)
+Docker + Docker Compose + GitHub Actions CI
 OpenTelemetry-compatible instrumentation
-Private object storage when report files require it
 ```
 
-## 16. Open technology decisions
+## 16. Open and resolved technology decisions
 
-- Final identity provider: managed OIDC, Keycloak, or Supabase Auth boundary
-- ORM and migration tool
-- Hosting provider and data-residency configuration
-- Redis/job-worker deployment
-- Object-storage provider
-- Observability backend and retention
-- Map/geocoding/routing provider
-- Rwanda facility and environmental-data sources
-- Notification delivery provider
-- External AI model provider, if any
-- CI/CD platform and deployment promotion rules
+### Resolved
+- **Identity provider boundary:** **Resolved in [ADR-011](../06-technical-decisions/DECISIONS.md)** — standards-based OIDC/JWT verification in NestJS (Supabase Auth cloud default + offline OIDC-compatible JWT test signer).
+- **ORM and migration tool:** **Resolved in [ADR-012](../06-technical-decisions/DECISIONS.md)** — Prisma ORM + Prisma Migrate (`user_accounts` domain table).
+- **Package managers, local Redis/worker/object-storage topology, and CI:** **Resolved in [ADR-008](../06-technical-decisions/DECISIONS.md), [ADR-016](../06-technical-decisions/DECISIONS.md), and [ADR-017](../06-technical-decisions/DECISIONS.md)** — Bun (`backend/`), Python 3.12 + `uv` (`ai-services/`), Docker Compose (`postgis/postgis:16-3.4`, `redis:7-alpine`, `minio/minio`), BullMQ worker entrypoint, and GitHub Actions CI.
+
+### Remaining pre-production decisions
+- Production hosting provider and Rwanda data-residency configuration (`OPEN-007`, `OPEN-012` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Production S3-compatible object-storage vendor, observability backend/retention, and CD promotion target (`OPEN-012`)
+- Authoritative Rwanda facility, map/geocoding/routing, weather/air-quality, and external notification providers (`OPEN-010`)
+- External AI model provider, if any (`OPEN-011`)

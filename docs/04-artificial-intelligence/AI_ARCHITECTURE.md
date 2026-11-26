@@ -113,9 +113,9 @@ ai-services/
 
 ## 5. Phased AI evolution strategy
 
-Albo's AI architecture is designed so the internal service contract remains stable while implementation matures through three strict gates:
+Albo's AI architecture is designed so the internal service contract remains stable while implementation matures through three strict **AI-evolution stages** *(note per [ADR-015](../06-technical-decisions/DECISIONS.md): "Phase 1–3" in this table denote AI capability evolution stages, distinct from the product delivery phases `Phase 0`–`Phase 7` in [ROADMAP.md](../01-project-foundation/ROADMAP.md))*:
 
-| Phase | Capability | Allowed implementation | Entry / exit gate |
+| AI evolution stage | Capability | Allowed implementation | Entry / exit gate |
 |---|---|---|---|
 | **Phase 1: First release (Rules first)** | Single vertical slice and initial approved risk use cases | Deterministic rules and weighted scoring in `risk_engine/`; no predictive ML models in production | Clinical/domain review of rules, 100% reproducible outputs on synthetic test sets, safety and limitation wording verified (FR-016 to FR-019) |
 | **Phase 2: Gated assistant & expanded rules** | Preventive-health Q&A, output explanation, and structured wellbeing check-in support | Approved assistant adapter with strict context bounding, input/output filters, and deterministic emergency/self-harm escalation | Escalation procedure approved (FR-024), privacy and data-residency review of any model provider ([DATA_PRIVACY.md](../03-security-and-privacy/DATA_PRIVACY.md) §12), adversarial safety evaluation passed (AI-005) |
@@ -126,15 +126,15 @@ Albo's AI architecture is designed so the internal service contract remains stab
 
 ## 6. Internal service-to-service contract
 
-The AI service is deployed on a private network and is never reachable directly from the browser or public internet ([SECURITY.md](../03-security-and-privacy/SECURITY.md) §4, §9; [THREAT_MODEL.md](../03-security-and-privacy/THREAT_MODEL.md) §6.2).
+The AI service (`Python 3.12` + `uv` per [ADR-016](../06-technical-decisions/DECISIONS.md)) is deployed on a private network and is never reachable directly from the browser or public internet ([SECURITY.md](../03-security-and-privacy/SECURITY.md) §4, §9; [THREAT_MODEL.md](../03-security-and-privacy/THREAT_MODEL.md) §6.2).
 
 ### 6.1 Authentication and transport
 
 - All calls originate from the NestJS core API or its authorized background worker.
-- Every request must include:
-  - Service-to-service authentication (proposed: signed service token or mutual TLS, open decision in [SECURITY.md](../03-security-and-privacy/SECURITY.md) §20)
+- Every request (except unauthenticated orchestrator probe `GET /internal/v1/health`) must include:
+  - **`X-Internal-Service-Token`** verified in constant time (`hmac.compare_digest`) by FastAPI middleware ([ADR-013](../06-technical-decisions/DECISIONS.md))
   - `X-Request-Id` and trace correlation headers
-  - Explicit client timeout enforced by the caller
+  - Explicit client timeout enforced by the caller (`<= 2000ms` for synchronous Slice 1 calls per `ADR-013`)
 - Requests without valid service identity are rejected with `401`/`403` and logged as a security signal (T-013).
 
 ### 6.2 Proposed internal endpoints
@@ -143,17 +143,17 @@ The AI service is deployed on a private network and is never reachable directly 
 |---|---|---|---|
 | `GET` | `/internal/v1/health` | Liveness and readiness check, loaded rule/model versions | Core API / orchestrator |
 | `POST` | `/internal/v1/risk-assessments/calculate` | Execute a versioned risk calculation on an immutable input snapshot | Core API or `risk-assessment` job worker |
-| `POST` | `/internal/v1/assistant/respond` | Process an approved assistant turn with safety and escalation checks (`Should` / safety-gated) | Core API assistant module |
-| `POST` | `/internal/v1/check-ins/evaluate-safety` | Run deterministic safety/escalation screening on a structured wellbeing check-in | Core API check-in module |
+| `POST` | `/internal/v1/assistant/respond` | Process an approved assistant turn with safety and escalation checks (`Should` / gated by `FEATURE_ASSISTANT_ENABLED`) | Core API assistant module |
+| `POST` | `/internal/v1/check-ins/evaluate-safety` | Run deterministic safety/escalation screening on a structured wellbeing check-in (gated by `FEATURE_CHECKINS_ENABLED`) | Core API check-in module |
 
-### 6.3 Risk calculation request contract (Proposed)
+### 6.3 Risk calculation request contract
 
-Aligning with ARCHITECTURE §9 and API §9:
+Aligning with ARCHITECTURE §9, API §9, `ADR-010`, and `ADR-015`:
 
 ```json
 {
   "request_id": "req-opaque-id",
-  "use_case_code": "approved_use_case_code",
+  "use_case_code": "lifestyle_ncd_preventive",
   "rule_model_version": "rules-v1.0.0",
   "input_snapshot_id": "snap-opaque-id",
   "calculated_for_timestamp": "2026-11-18T12:00:00Z",
@@ -165,22 +165,21 @@ Aligning with ARCHITECTURE §9 and API §9:
   "inputs": {
     "health_inputs": [
       {
-        "field_code": "approved_field_code",
-        "value": 1,
-        "unit": "approved_unit",
+        "field_code": "physical_activity_minutes_per_week",
+        "value": 120,
+        "unit": "min/week",
+        "observed_at": "2026-11-18T08:00:00Z",
+        "source_type": "self_reported"
+      },
+      {
+        "field_code": "tobacco_use_status",
+        "value": "never",
+        "unit": null,
         "observed_at": "2026-11-18T08:00:00Z",
         "source_type": "self_reported"
       }
     ],
-    "environmental_observations": [
-      {
-        "observation_type": "rainfall",
-        "value": 42.5,
-        "unit": "mm",
-        "observed_at": "2026-11-18T06:00:00Z",
-        "quality_status": "verified"
-      }
-    ]
+    "environmental_observations": []
   }
 }
 ```
@@ -191,34 +190,40 @@ Notice what is **excluded** from the payload:
 - No precise GPS coordinates (environmental observations are already normalized by the core API to the approved area/grid level)
 - No unrelated historical records outside the use case's required inputs
 
-### 6.4 Risk calculation response contract (Proposed)
+### 6.4 Risk calculation response contract
 
 ```json
 {
   "request_id": "req-opaque-id",
   "input_snapshot_id": "snap-opaque-id",
-  "use_case_code": "approved_use_case_code",
+  "use_case_code": "lifestyle_ncd_preventive",
   "rule_model_version": "rules-v1.0.0",
-  "implementation_type": "rule",
+  "implementation_type": "weighted_score",
   "status": "complete",
   "calculated_at": "2026-11-18T12:00:01Z",
   "result": {
-    "level": "moderate",
-    "score_band_or_weight_summary": "moderate_threshold_met",
+    "level": "low",
+    "score_band_or_weight_summary": "low_threshold_met",
     "contributing_factors": [
       {
-        "factor_code": "recent_heavy_rainfall_exposure",
-        "source_field": "rainfall",
+        "factor_code": "physical_activity_below_guideline",
+        "source_field": "physical_activity_minutes_per_week",
         "direction": "increases_risk",
-        "explanation_key": "factor.rainfall.elevated"
+        "explanation_key": "factor.physical_activity.below_guideline"
+      },
+      {
+        "factor_code": "no_tobacco_use",
+        "source_field": "tobacco_use_status",
+        "direction": "protective",
+        "explanation_key": "factor.tobacco.never"
       }
     ],
     "limitations": [
-      "This is a preventive risk indicator based on self-reported and regional environmental data, not a medical diagnosis."
+      "This is a preventive risk indicator based on self-reported lifestyle information, not a medical diagnosis."
     ],
     "recommended_next_steps": [
       {
-        "action_code": "review_preventive_guidance",
+        "action_code": "increase_weekly_physical_activity",
         "priority": "standard"
       }
     ]
@@ -231,13 +236,13 @@ Notice what is **excluded** from the payload:
 }
 ```
 
-When required inputs are missing, stale, or fail validation, the AI service returns `"status": "limited"`, omits or sets `"level": null`, populates `missing_or_stale_fields` and `limitations`, and never defaults to `"level": "low"` (FR-018, T-037).
+When required inputs are missing, stale, or fail validation, the AI service returns `"status": "limited"`, sets `"level": null`, populates `missing_or_stale_fields` and `limitations`, and never defaults to `"level": "low"` (FR-018, `ADR-003`, `ADR-014`, T-037).
 
 ## 7. Synchronous versus asynchronous execution
 
-Following ARCHITECTURE §8 and SYSTEM_DESIGN §8:
+Following ARCHITECTURE §8, SYSTEM_DESIGN §8, and [ADR-013](../06-technical-decisions/DECISIONS.md):
 
-- **Synchronous path (candidate for first vertical slice):** Deterministic rule calculations with bounded in-memory inputs and low latency may be called synchronously by the core API during `POST /api/v1/me/risk-assessments`, subject to a strict timeout.
+- **Synchronous path (adopted for first vertical slice per `ADR-013`):** Deterministic rule calculations with bounded in-memory inputs are called synchronously by the core API during `POST /api/v1/me/risk-assessments` with a strict **`2000ms` timeout**.
 - **Asynchronous path (BullMQ worker):** Batch recalculations, calculations triggered by environmental ingestion, or higher-latency model evaluations run asynchronously through the `risk-assessment` queue:
   1. Core API validates consent, creates the immutable `input_snapshot` and a `risk_assessment` record in `queued` status, and enqueues the job.
   2. Job worker re-verifies that consent has not been withdrawn ([ACCESS_CONTROL.md](../03-security-and-privacy/ACCESS_CONTROL.md) §8.1), marks status `processing`, and calls the AI service.
@@ -247,9 +252,9 @@ Following ARCHITECTURE §8 and SYSTEM_DESIGN §8:
 ## 8. State, versioning, and configuration management
 
 - **Stateless compute:** The AI service does not maintain its own primary database of user health records.
-- **Immutable rule and model versions:** Every rule set and future model artifact has an immutable semantic version (e.g., `rules-v1.0.0`) matching a record in the core database's `rule_model_version` table (DATABASE_SCHEMA §8.2).
+- **Immutable rule and model versions:** Every rule set and future model artifact has an immutable semantic version (e.g., `rules-v1.0.0`) matching a record in the core database's `rule_model_version` table (DATABASE_SCHEMA §8.2, `ADR-015`).
 - **No silent live edits:** Changing a threshold, weight, prompt template, or escalation keyword creates a new version that must pass evaluation tests in CI before deployment (T-038).
-- **Rollback:** The AI service supports keeping the previous approved rule/model version loaded so the core API can pin or roll back a use case via configuration without corrupting historical assessments.
+- **Rollback:** The AI service supports keeping the previous approved rule/model version loaded so the core API can pin or roll back a use case via `APPROVED_RISK_RULE_VERSIONS` without corrupting historical assessments (`ADR-017`).
 - **Experiment tracking (`Later`):** MLflow or an equivalent registry is introduced only when Phase 3 model experiments are approved (TECH_STACK §5) and must never store real patient data.
 
 ## 9. Failure modes and degraded behavior
@@ -270,33 +275,36 @@ Following ARCHITECTURE §8 and SYSTEM_DESIGN §8:
 
 ## 11. First-release AI architecture scope
 
-Aligned with the first vertical slice in [PROJECT_STATUS.md](../PROJECT_STATUS.md) and SYSTEM_DESIGN §20:
+Aligned with the first vertical slice in [PROJECT_STATUS.md](../PROJECT_STATUS.md), SYSTEM_DESIGN §20, and [ADR-016](../06-technical-decisions/DECISIONS.md):
 
-- FastAPI service shell with `/internal/v1/health` and `/internal/v1/risk-assessments/calculate`
-- Service-to-service authentication middleware and request-ID propagation
-- Typed Pydantic contracts and redacted error handling
-- `data_processing/` completeness, range, and freshness validator for the first approved vertical-slice use case
-- `risk_engine/` deterministic rule runner for one approved non-diagnostic risk indicator
-- Pytest suite covering contract validation, reproducibility, missing/stale input handling (`limited` status), and zero sensitive-payload logging
+- FastAPI service (`Python 3.12` + `uv`) with `/internal/v1/health`, `/internal/v1/risk-assessments/calculate`, and safety-gated `/internal/v1/check-ins/evaluate-safety` & `/internal/v1/assistant/respond`
+- Constant-time `X-Internal-Service-Token` authentication middleware and `X-Request-Id` propagation (`ADR-013`)
+- Typed Pydantic v2 contracts (`extra="forbid"`) and redacted error handling
+- `data_processing/` completeness, range, and freshness validator (`max_age_hours: 720` for `lifestyle_ncd_preventive`)
+- `risk_engine/` deterministic rule runner for `lifestyle_ncd_preventive` (`rules-v1.0.0`)
+- Pytest suite covering contract validation, reproducibility, missing/stale input handling (`limited` status), crisis escalation recall, and zero sensitive-payload logging
 
-Excluded from the first vertical slice: assistant endpoints, external LLM providers, ML model training/inference, MLflow, and multi-disease batch pipelines.
+Excluded from first-release onboarding: external LLM vendor APIs, ML model training/inference, MLflow, and live multi-disease environmental pipelines.
 
 ## 12. Acceptance criteria
 
 The AI architecture is ready for first-release implementation when:
 
-- The internal request/response schema between NestJS and FastAPI is agreed.
-- Service-to-service authentication between the core API and AI service is selected.
-- Synchronous versus queued execution for the first vertical slice is decided.
-- The first vertical-slice risk use case and rule version are specified in [RISK_SCORING.md](RISK_SCORING.md).
+- The internal request/response schema between NestJS and FastAPI is agreed (`ADR-015`).
+- Service-to-service authentication between the core API and AI service is selected (`ADR-013`).
+- Synchronous versus queued execution for the first vertical slice is decided (`ADR-013`).
+- The first vertical-slice risk use case and rule version are specified in [RISK_SCORING.md](RISK_SCORING.md) and [MODEL_DOCUMENTATION.md](MODEL_DOCUMENTATION.md) (`ADR-010`).
 - Log redaction for Pydantic validation errors and unhandled exceptions is verified by tests.
 - All decisions are recorded in [DECISIONS.md](../06-technical-decisions/DECISIONS.md).
 
-## 13. Open AI architecture decisions
+## 13. Open and resolved AI architecture decisions
 
-- Synchronous HTTP call versus BullMQ worker queue for the first vertical-slice risk calculation
-- Service-to-service authentication mechanism between NestJS and FastAPI (shared signed token vs. mTLS)
-- First-release risk use cases, input fields, and freshness thresholds
-- Whether the AI assistant is included in the first release (`Should` requirement gated by safety review)
-- Selection, hosting, and data-residency compliance of any external model provider if the assistant is enabled
-- Localization approach for `explanation_key`, limitations, and next-step codes (whether translated in the core API or web client)
+### Resolved
+- **Synchronous vs. queued execution for Slice 1:** **Resolved in [ADR-013](../06-technical-decisions/DECISIONS.md)** — synchronous HTTP call (`<= 2000ms` timeout) for citizen-triggered Slice 1 calculations; BullMQ retained for async batch jobs.
+- **Service-to-service authentication:** **Resolved in [ADR-013](../06-technical-decisions/DECISIONS.md)** — `X-Internal-Service-Token` verified in constant time over the private network.
+- **First vertical-slice risk use case, fields, and freshness threshold:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md) & [ADR-015](../06-technical-decisions/DECISIONS.md)** — `lifestyle_ncd_preventive` (`rules-v1.0.0`, `max_age_hours: 720`).
+- **Localization strategy:** **Resolved in [ADR-010](../06-technical-decisions/DECISIONS.md)** — English launch using structured `explanation_key` and `action_code` identifiers so Kinyarwanda and French translations plug in without changing backend/AI contracts.
+
+### Remaining pre-production decisions
+- Production clinical sign-off and Rwanda emergency/crisis escalation directory (`OPEN-006` in [DECISIONS.md](../06-technical-decisions/DECISIONS.md))
+- Production AI assistant activation (`FEATURE_ASSISTANT_ENABLED`) and choice between deterministic template/retrieval vs. residency-compliant external LLM provider (`OPEN-011`)
