@@ -281,6 +281,21 @@ When making or resolving a decision:
   - Historical risk assessments remain 100% reproducible even after a citizen corrects a self-reported health input.
 - **Related documents:** [API_DOCUMENTATION.md](../02-architecture-and-engineering/API_DOCUMENTATION.md), [SYSTEM_DESIGN.md](../02-architecture-and-engineering/SYSTEM_DESIGN.md), [DATABASE_SCHEMA.md](../02-architecture-and-engineering/DATABASE_SCHEMA.md), [INTEGRATIONS.md](../02-architecture-and-engineering/INTEGRATIONS.md), [AI_SAFETY.md](../04-artificial-intelligence/AI_SAFETY.md), [DATA_PRIVACY.md](../03-security-and-privacy/DATA_PRIVACY.md), [DEPLOYMENT.md](../05-development-standards/DEPLOYMENT.md)
 
+### ADR-018 — Frontend visual direction, auth adapter boundary, and mock-first citizen screens
+
+- **Status:** Proposed (frontend onboarding track, `ADR-016`)
+- **Date:** 2026-11-27
+- **Deciders / Owner:** Frontend track
+- **Context:** `frontend/` is being built before integration. The visual identity was an open design decision (`UI_UX.md` §21), and sign-in, onboarding and notification settings were first-release screens without an implementation.
+- **Decision:**
+  1. Adopt the provided Albo mark (`frontend/public/albo-mark.png`) and a lavender, card-based layout inspired by the Pillio healthcare reference. Medication and refill concepts from the reference are **not** adopted; layouts are mapped to Albo scope (inputs, indicators, referrals, find care).
+  2. Authentication goes through a client `AuthAdapter` (`frontend/src/lib/auth/auth.ts`). Pages never import an identity-provider SDK. Only a mock adapter exists until Supabase Auth integration (`ADR-011`). Sign-in errors and password-reset responses never reveal whether an account exists.
+  3. Onboarding (`/onboarding`) explains purpose, data use, AI limits and emergency boundaries (FR-002), then asks for consent with **nothing preselected**. Only `required` purposes block progress. Purposes for gated features are hidden while the feature flag is off.
+  4. Notification settings (`/settings/notifications`) use the backend `notification_preferences` contract. Email, SMS and push require `notifications_delivery` consent. In-app delivery does not.
+  5. The client password minimum (8 characters, a letter and a number) is provisional. The identity provider's policy is authoritative.
+- **Consequences:** Screens can be reviewed with synthetic data before integration. During integration, the mock adapter is replaced by a Supabase Auth adapter, and route protection plus an onboarding-completed signal must be added. Visual direction still needs design review before release.
+- **Related documents:** [UI/UX](../02-architecture-and-engineering/UI_UX.md) §5, §9, §21; [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md) §8.1, §8.6; [Requirements](../01-project-foundation/REQUIREMENTS.md) FR-001–FR-005, FR-015
+
 ---
 
 ## 4. Remaining open decisions register (`OPEN-006` to `OPEN-012` — post-Slice 1 & pre-production gates)

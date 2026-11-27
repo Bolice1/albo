@@ -89,6 +89,8 @@ Provider navigation must not expose people or records merely because the provide
 | Reports | View and request personal reports | Show status, date range, provenance, limitations, and private download |
 | Account settings | Manage account and privacy actions | Show deletion, export, correction, and sign-out options according to policy |
 
+> **Implementation status (frontend track, `ADR-018`):** All first-release screens above exist in `frontend/` with synthetic mock data: landing (`/`), sign in (`/sign-in`), sign up (`/sign-up`), account recovery (`/forgot-password`), onboarding (`/onboarding`), consent center (`/settings/consent`), profile and health inputs (`/health-inputs`, `/settings`), dashboard, risk detail, find care (`/care`), notification settings (`/settings/notifications`), reports and account settings. Identity-provider integration, route protection and live API wiring are still pending.
+
 ### Later or gated screens
 
 - AI assistant conversation
@@ -367,7 +369,7 @@ The first-release design is ready for implementation when:
 
 ## 21. Open design decisions
 
-- Final visual identity, color palette, and typography
+- Final visual identity, color palette, and typography (proposed direction and logo in `ADR-018`; needs design review)
 - First-release language and localization approach
 - Exact dashboard information hierarchy
 - First-release risk-level vocabulary and wording

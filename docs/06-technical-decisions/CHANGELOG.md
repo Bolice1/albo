@@ -12,6 +12,16 @@ Every significant change to requirements, APIs, database schemas, security/priva
 
 ---
 
+## [Unreleased — Frontend onboarding track (`frontend/`)]
+
+### 2026-11-27 — Auth screens, onboarding, notification settings, and brand mark
+
+- Added sign-in, sign-up and password-reset screens behind a mock `AuthAdapter` with non-revealing errors (FR-001, `ADR-018`).
+- Added `/onboarding`: purpose, data-use and AI explanation, consent choices with nothing preselected, and profile name (FR-002–FR-005).
+- Added `/settings/notifications`: channels, categories and quiet hours, with consent gating for external channels (FR-015).
+- Wired the Settings profile form to `PATCH /me/profile` (mock).
+- Adopted the Albo mark and Pillio-inspired visual direction (`ADR-018`).
+
 ## [Unreleased — Backend & AI Services Onboarding Complete (`backend/` + `ai-services/`)]
 
 **Implementation status:** All backend (`backend/`) and AI-service (`ai-services/`) domains, PostgreSQL/PostGIS migrations, BullMQ background workers, 7 pre-release AI safety evaluation suites, authorization/IDOR/consent/redaction integration suites, multi-stage non-root Docker packaging, and GitHub Actions CI are **implemented and passing** (`frontend/` deferred per `ADR-016`).

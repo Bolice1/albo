@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/*
+ * Albo design tokens — layout language inspired by the Pillio reference
+ * (lavender canvas, translucent rounded cards, black pill CTAs, violet accent).
+ * Final palette is an open design decision (UI_UX §21).
+ */
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #eceefb;
+  --color-canvas-deep: #dfe1f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f6fc;
+  --color-line: #e7e8f3;
+  --color-ink: #111116;
+  --color-ink-soft: #3b3d4a;
+  --color-muted: #858a9e;
+
+  --color-accent-50: #f1f1fe;
+  --color-accent-100: #e4e4fd;
+  --color-accent-200: #cbcbfb;
+  --color-accent-300: #b0b1f8;
+  --color-accent-400: #9596f4;
+  --color-accent-500: #7b7cee;
+  --color-accent-600: #6364dc;
+
+  /* Semantic risk/status colours — always paired with icon + text (NFR-011). */
+  --color-low: #1f9d6b;
+  --color-low-bg: #e5f6ee;
+  --color-moderate: #c27a0a;
+  --color-moderate-bg: #fdf3e1;
+  --color-high: #d64545;
+  --color-high-bg: #fdeaea;
+  --color-neutral: #6b7083;
+  --color-neutral-bg: #eef0f5;
+
+  --radius-card: 1.25rem;
+  --radius-panel: 1.75rem;
+
+  --shadow-card: 0 1px 2px rgb(17 17 22 / 0.03), 0 8px 24px -12px rgb(76 78 160 / 0.18);
+  --shadow-pop: 0 18px 50px -12px rgb(40 42 110 / 0.35);
+}
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+  }
+  body {
+    @apply text-ink antialiased;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #ffffff 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, var(--color-accent-100) 0%, transparent 55%),
+      var(--color-canvas);
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent-500);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+}
+
+@utility hatched {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-line) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+@utility glass {
+  background: rgb(255 255 255 / 0.78);
+  backdrop-filter: blur(16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
