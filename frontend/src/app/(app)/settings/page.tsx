@@ -1,10 +1,12 @@
 "use client";
 
 import { PageHeader } from "@/components/domain";
+import { DataRightsCard } from "@/components/domain/data-rights";
+import { FeaturePreviewsCard } from "@/components/domain/feature-previews";
 import { Button, ButtonLink, Card, CardHeader, Field, inputClass } from "@/components/ui/primitives";
 import { useMe, useUpdateProfile } from "@/lib/api/hooks";
 import { useState } from "react";
-import { Bell, Download, ShieldCheck, Trash2, User } from "lucide-react";
+import { Bell, ShieldCheck, User } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: me } = useMe();
@@ -56,15 +58,9 @@ export default function SettingsPage() {
             <p className="mb-4 text-sm text-ink-soft">Choose reminders, channels and quiet hours.</p>
             <ButtonLink href="/settings/notifications" variant="secondary">Notification settings</ButtonLink>
           </Card>
-          <Card>
-            <CardHeader icon={<Download />} title="Your data" />
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" disabled><Download /> Request data export</Button>
-              <Button variant="ghost" className="text-high" disabled><Trash2 /> Request account deletion</Button>
-            </div>
-            <p className="mt-3 text-xs text-muted">Available once connected to the Albo service.</p>
-          </Card>
+          <DataRightsCard />
         </div>
+        <FeaturePreviewsCard />
       </div>
     </div>
   );

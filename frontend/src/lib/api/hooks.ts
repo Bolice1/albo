@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type NewHealthInput, type NewReferral } from "./client";
-import type { NotificationPreferences, ProfileUpdate } from "./types";
+import type { FeatureFlags, NewCheckIn, NewFollowUp, NotificationPreferences, ProfileUpdate } from "./types";
 
 export const qk = {
   me: ["me"] as const,
@@ -20,6 +20,14 @@ export const qk = {
   consents: ["consents"] as const,
   activity: ["activity"] as const,
   notificationPreferences: ["notification-preferences"] as const,
+  dataExports: ["data-exports"] as const,
+  checkIns: ["check-ins"] as const,
+  conversations: ["assistant-conversations"] as const,
+  consultations: ["consultations"] as const,
+  assigned: ["provider", "assigned"] as const,
+  citizen: (id: string) => ["provider", "citizen", id] as const,
+  devices: ["device-sources"] as const,
+  regional: ["regional-indicators"] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: qk.me, queryFn: api.getMe });
@@ -111,3 +119,101 @@ export function useUpdateProfile() {
     onSuccess: (data) => qc.setQueryData(qk.me, data),
   });
 }
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.markAllNotificationsRead(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.notifications }),
+  });
+}
+
+/** Polls while an export is being prepared so the status updates on its own. */
+export const useDataExports = () =>
+  useQuery({
+    queryKey: qk.dataExports,
+    queryFn: api.listDataExports,
+    refetchInterval: (q) => (q.state.data?.some((e) => e.status === "requested") ? 1500 : false),
+  });
+
+export function useRequestDataExport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.requestDataExport(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.dataExports }),
+  });
+}
+
+export function useRequestAccountDeletion() {
+  return useMutation({ mutationFn: () => api.requestAccountDeletion() });
+}
+
+export function useSetFeature() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ flag, enabled }: { flag: keyof FeatureFlags; enabled: boolean }) => api.setFeature(flag, enabled),
+    onSuccess: (data) => {
+      qc.setQueryData(qk.features, data);
+      qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "features" });
+    },
+  });
+}
+
+export const useCheckIns = () => useQuery({ queryKey: qk.checkIns, queryFn: api.listCheckIns, retry: false });
+export function useCreateCheckIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewCheckIn) => api.createCheckIn(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.checkIns }),
+  });
+}
+
+export const useConversations = () =>
+  useQuery({ queryKey: qk.conversations, queryFn: api.listConversations, retry: false });
+export function useCreateConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.createConversation(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.conversations }),
+  });
+}
+export function useSendAssistantMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, text }: { conversationId: string; text: string }) =>
+      api.sendAssistantMessage(conversationId, text),
+    onSettled: () => qc.invalidateQueries({ queryKey: qk.conversations }),
+  });
+}
+
+export const useConsultations = () =>
+  useQuery({ queryKey: qk.consultations, queryFn: api.listConsultations, retry: false });
+export function useRequestConsultation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.requestConsultation,
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.consultations }),
+  });
+}
+export function useCancelConsultation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.cancelConsultation,
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.consultations }),
+  });
+}
+
+export const useAssignedCitizens = () =>
+  useQuery({ queryKey: qk.assigned, queryFn: api.listAssignedCitizens, retry: false });
+export const useCitizenOverview = (id: string) =>
+  useQuery({ queryKey: qk.citizen(id), queryFn: () => api.getCitizenOverview(id), retry: false });
+export function useCreateFollowUp(citizenId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewFollowUp) => api.createFollowUp(citizenId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.citizen(citizenId) }),
+  });
+}
+
+export const useDeviceSources = () => useQuery({ queryKey: qk.devices, queryFn: api.listDeviceSources });
+export const useRegionalIndicators = () => useQuery({ queryKey: qk.regional, queryFn: api.listRegionalIndicators });

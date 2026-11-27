@@ -1,16 +1,20 @@
 "use client";
 
 import { IconButton } from "@/components/ui/primitives";
-import { useMarkNotificationRead, useMe, useNotifications } from "@/lib/api/hooks";
+import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/api/hooks";
+import Link from "next/link";
 import { relativeTime } from "@/lib/format";
-import { Bell, ChevronDown, Menu, Search } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu, Search, Settings, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { data: me } = useMe();
   const { data: notifications } = useNotifications();
   const markRead = useMarkNotificationRead();
+  const markAll = useMarkAllNotificationsRead();
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const unread = notifications?.filter((n) => !n.read_at).length ?? 0;
@@ -21,10 +25,14 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
         e.preventDefault();
         searchRef.current?.focus();
       }
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        setMenuOpen(false);
+      }
     };
     const onClick = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onClick);
@@ -76,10 +84,17 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
           </IconButton>
           {open && (
             <div className="absolute right-0 z-30 mt-2 w-80 rounded-2xl bg-surface p-2 shadow-[var(--shadow-pop)]">
-              <p className="px-3 py-2 text-xs font-medium text-muted">Notifications</p>
+              <div className="flex items-center justify-between px-3 py-2">
+                <p className="text-xs font-medium text-muted">Notifications</p>
+                {unread > 0 && (
+                  <button type="button" onClick={() => markAll.mutate()} className="text-xs font-medium text-accent-600 hover:underline">
+                    Mark all read
+                  </button>
+                )}
+              </div>
               {!notifications?.length && <p className="px-3 py-4 text-sm text-muted">You have no notifications.</p>}
               <ul>
-                {notifications?.map((n) => (
+                {notifications?.slice(0, 4).map((n) => (
                   <li key={n.id}>
                     <button
                       type="button"
@@ -96,20 +111,53 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
                   </li>
                 ))}
               </ul>
+              <div className="mt-1 flex justify-between border-t border-line px-3 pt-2 text-xs font-medium">
+                <Link href="/notifications" onClick={() => setOpen(false)} className="py-1 text-ink hover:underline">View all</Link>
+                <Link href="/settings/notifications" onClick={() => setOpen(false)} className="py-1 text-muted hover:text-ink">Preferences</Link>
+              </div>
             </div>
           )}
         </div>
 
-        <button type="button" className="flex items-center gap-3 rounded-full py-1 pl-1 pr-2 hover:bg-surface/60">
-          <span className="grid size-10 place-items-center rounded-full bg-accent-200 text-sm font-semibold text-accent-600">
-            {initials}
-          </span>
-          <span className="hidden text-left sm:block">
-            <span className="block text-sm font-medium leading-tight">{me?.display_name ?? "…"}</span>
-            <span className="block text-xs text-muted">@{me?.handle ?? ""}</span>
-          </span>
-          <ChevronDown className="size-4 text-muted" aria-hidden />
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-3 rounded-full py-1 pl-1 pr-2 hover:bg-surface/60"
+          >
+            <span className="grid size-10 place-items-center rounded-full bg-accent-200 text-sm font-semibold text-accent-600">
+              {initials}
+            </span>
+            <span className="hidden text-left sm:block">
+              <span className="block text-sm font-medium leading-tight">{me?.display_name ?? "…"}</span>
+              <span className="block text-xs text-muted">@{me?.handle ?? ""}</span>
+            </span>
+            <ChevronDown className="size-4 text-muted" aria-hidden />
+          </button>
+          {menuOpen && (
+            <ul role="menu" className="absolute right-0 z-30 mt-2 w-56 rounded-2xl bg-surface p-2 shadow-[var(--shadow-pop)]">
+              {[
+                { href: "/settings", label: "Profile & account", icon: UserRound },
+                { href: "/settings/consent", label: "Consent & privacy", icon: ShieldCheck },
+                { href: "/settings/notifications", label: "Notification settings", icon: Settings },
+                { href: "/sign-in", label: "Log out", icon: LogOut },
+              ].map(({ href, label, icon: Icon }) => (
+                <li key={href} role="none">
+                  <Link
+                    role="menuitem"
+                    href={href}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-ink-soft hover:bg-surface-muted hover:text-ink"
+                  >
+                    <Icon className="size-4" aria-hidden /> {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </header>
   );

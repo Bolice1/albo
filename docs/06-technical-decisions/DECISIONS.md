@@ -296,6 +296,22 @@ When making or resolving a decision:
 - **Consequences:** Screens can be reviewed with synthetic data before integration. During integration, the mock adapter is replaced by a Supabase Auth adapter, and route protection plus an onboarding-completed signal must be added. Visual direction still needs design review before release.
 - **Related documents:** [UI/UX](../02-architecture-and-engineering/UI_UX.md) §5, §9, §21; [API documentation](../02-architecture-and-engineering/API_DOCUMENTATION.md) §8.1, §8.6; [Requirements](../01-project-foundation/REQUIREMENTS.md) FR-001–FR-005, FR-015
 
+### ADR-019 — Gated and later-phase frontend modules built behind runtime feature flags
+
+- **Status:** Proposed (frontend onboarding track)
+- **Date:** 2026-11-27
+- **Deciders / Owner:** Frontend track
+- **Context:** The team asked for a frontend covering every project feature. Check-ins, the assistant, consultations and the provider portal are gated (`ADR-017`, `OPEN-006`, `OPEN-009`, `OPEN-011`). Device connections and regional maps are "Later" (FR-010, Phase 2). `AGENTS.md` and `UI_UX.md` §5 forbid shipping these as committed scope before approval.
+- **Decision:**
+  1. All modules are built in `frontend/` but render only when their flag in `FeatureFlags` is on (`checkins`, `assistant`, `consultations`, `provider_portal`, `later_previews`). When a flag is off, the module shows a safe "not available yet" state and is hidden from navigation.
+  2. Matching `ADR-017`, the mock (development) data enables these flags so they can be tested on synthetic data. Settings → Feature previews can switch them off. That panel is hidden when `NEXT_PUBLIC_API_MODE=live`, where flags come from the backend.
+  3. Every gated screen shows a preview banner. Later-phase screens are read-only previews: no device is connected and no regional data is real.
+  4. The mock assistant is a Stage 1 template assistant (`AI_ASSISTANT.md` §9). A deterministic screener (`frontend/src/lib/api/mock-safety.ts`) checks crisis signals first and escalates conservatively. It refuses diagnosis, prescription, other-person and prompt-injection requests. In live mode, every safety decision is made by the backend and `ai-services/`. The client only renders the result.
+  5. Escalation cards use only synthetic placeholder contacts flagged `synthetic_verify_before_production` (`OPEN-006`).
+  6. Provider views show only active assignments and allowed scopes. Unknown and unassigned people return the same "not available" state, and follow-ups are append-only.
+- **Consequences:** Stakeholders can review complete journeys before approval. Enabling any module in production still requires its `OPEN-*` gate to be resolved and the backend flag to be turned on. The mock screener is not a substitute for the backend safety suites.
+- **Related documents:** [AI assistant](../04-artificial-intelligence/AI_ASSISTANT.md), [AI safety](../04-artificial-intelligence/AI_SAFETY.md), [UI/UX](../02-architecture-and-engineering/UI_UX.md) §5, [Access control](../03-security-and-privacy/ACCESS_CONTROL.md), [Requirements](../01-project-foundation/REQUIREMENTS.md) FR-010, FR-021–FR-025, FR-029–FR-034
+
 ---
 
 ## 4. Remaining open decisions register (`OPEN-006` to `OPEN-012` — post-Slice 1 & pre-production gates)

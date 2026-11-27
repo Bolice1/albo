@@ -89,7 +89,7 @@ Provider navigation must not expose people or records merely because the provide
 | Reports | View and request personal reports | Show status, date range, provenance, limitations, and private download |
 | Account settings | Manage account and privacy actions | Show deletion, export, correction, and sign-out options according to policy |
 
-> **Implementation status (frontend track, `ADR-018`):** All first-release screens above exist in `frontend/` with synthetic mock data: landing (`/`), sign in (`/sign-in`), sign up (`/sign-up`), account recovery (`/forgot-password`), onboarding (`/onboarding`), consent center (`/settings/consent`), profile and health inputs (`/health-inputs`, `/settings`), dashboard, risk detail, find care (`/care`), notification settings (`/settings/notifications`), reports and account settings. Identity-provider integration, route protection and live API wiring are still pending.
+> **Implementation status (frontend track, `ADR-018`):** All first-release screens above exist in `frontend/` with synthetic mock data: landing (`/`), sign in (`/sign-in`), sign up (`/sign-up`), account recovery (`/forgot-password`), onboarding (`/onboarding`), consent center (`/settings/consent`), profile and health inputs (`/health-inputs`, `/settings`), dashboard, risk detail, find care (`/care`), notification settings (`/settings/notifications`), reports, notification inbox (`/notifications`) and account settings with data export and deletion. Gated and later screens are also built behind runtime feature flags (`ADR-019`): check-ins, assistant, consultations, provider portal, device connections and regional health map. Identity-provider integration, route protection and live API wiring are still pending.
 
 ### Later or gated screens
 

@@ -7,6 +7,15 @@ import type {
   ActivityEvent,
   ConsentPurpose,
   ConsentRecord,
+  AssignedCitizen,
+  AssistantConversation,
+  Consultation,
+  DeviceSource,
+  ProviderFollowUp,
+  RegionalIndicator,
+  WellbeingCheckIn,
+  DataExport,
+  AccountDeletionRequest,
   EnvironmentObservation,
   Facility,
   FeatureFlags,
@@ -30,6 +39,13 @@ const todayAt = (h: number, m = 0) => {
   return d.toISOString();
 };
 
+export const CHECK_IN_DISCLAIMER =
+  "Wellbeing check-ins support personal reflection and preventive awareness only. They are not a clinical or mental-health diagnosis.";
+export const ASSISTANT_DISCLAIMER =
+  "I'm an AI support tool, not a doctor or an emergency service. I can't diagnose or prescribe.";
+export const CONSULTATION_NOTICE =
+  "Albo only helps you request and schedule a consultation. The consultation itself happens with the provider.";
+
 export function createMockDb() {
   const me: Me = {
     id: "usr_synthetic_001",
@@ -38,7 +54,14 @@ export function createMockDb() {
     roles: ["citizen"],
   };
 
-  const features: FeatureFlags = { checkins: false, assistant: false, provider_portal: false };
+  // Development mirrors ADR-017: gated modules are testable on synthetic data. Toggle in Settings → Feature previews.
+  const features: FeatureFlags = {
+    checkins: true,
+    assistant: true,
+    provider_portal: true,
+    consultations: true,
+    later_previews: true,
+  };
 
   const healthInputs: HealthInput[] = [
     {
@@ -251,6 +274,22 @@ export function createMockDb() {
       created_at: ago(2 * DAY),
       read_at: null,
     },
+    {
+      id: "ntf_003",
+      category: "system",
+      title: "Indicator recalculated",
+      body: "Your preventive indicator was updated using your latest inputs.",
+      created_at: ago(4 * DAY),
+      read_at: ago(4 * DAY),
+    },
+    {
+      id: "ntf_004",
+      category: "reminder",
+      title: "Referral acknowledged",
+      body: "Riverside Demo Health Post received your contact request.",
+      created_at: ago(9 * DAY),
+      read_at: ago(8 * DAY),
+    },
   ];
 
   const trends: TrendSeries[] = [
@@ -366,6 +405,22 @@ export function createMockDb() {
       required: false,
     },
     {
+      code: "wellbeing_check_ins",
+      version: "v1",
+      title: "Save my wellbeing check-ins",
+      description: "Lets Albo store short check-ins about stress, tiredness and sleep so you can see how you feel over time.",
+      data_involved: "Check-in answers (0–4 scales)",
+      required: false,
+    },
+    {
+      code: "assistant_conversations",
+      version: "v1",
+      title: "Use the Albo assistant",
+      description: "Lets the AI support tool read your latest indicator summary to explain it. Conversations are kept briefly.",
+      data_involved: "Your messages and indicator summary",
+      required: false,
+    },
+    {
       code: "provider_data_sharing",
       version: "v1",
       title: "Share with an assigned provider",
@@ -380,6 +435,8 @@ export function createMockDb() {
     { id: "cns_002", purpose_code: "preventive_risk_calculation", version: "v1", status: "granted", granted_at: ago(80 * DAY), withdrawn_at: null },
     { id: "cns_003", purpose_code: "environmental_context", version: "v1", status: "granted", granted_at: ago(80 * DAY), withdrawn_at: null },
     { id: "cns_004", purpose_code: "report_generation", version: "v1", status: "granted", granted_at: ago(10 * DAY), withdrawn_at: null },
+    { id: "cns_006", purpose_code: "wellbeing_check_ins", version: "v1", status: "granted", granted_at: ago(20 * DAY), withdrawn_at: null },
+    { id: "cns_007", purpose_code: "assistant_conversations", version: "v1", status: "granted", granted_at: ago(20 * DAY), withdrawn_at: null },
     { id: "cns_005", purpose_code: "notifications_delivery", version: "v1", status: "withdrawn", granted_at: ago(80 * DAY), withdrawn_at: ago(30 * DAY) },
   ];
 
@@ -402,9 +459,156 @@ export function createMockDb() {
     updated_at: ago(30 * DAY),
   };
 
+  const dataExports: DataExport[] = [
+    {
+      id: "exp_001",
+      status: "expired",
+      requested_at: ago(60 * DAY),
+      completed_at: ago(60 * DAY),
+      expires_at: ago(53 * DAY),
+    },
+  ];
+  const deletionRequest: AccountDeletionRequest | null = null;
+
+  const checkIns: WellbeingCheckIn[] = [
+    {
+      id: "chk_002",
+      questionnaire_version: "wellbeing-v1",
+      responses: { stress_frequency_score: 2, exhaustion_score: 2, sleep_quality_score: 3 },
+      completed_at: ago(3 * DAY),
+      safety_status: "routine",
+      escalation_required: false,
+      non_diagnostic_disclaimer: CHECK_IN_DISCLAIMER,
+      crisis_escalation: null,
+    },
+    {
+      id: "chk_001",
+      questionnaire_version: "wellbeing-v1",
+      responses: { stress_frequency_score: 3, exhaustion_score: 3, sleep_quality_score: 1 },
+      completed_at: ago(10 * DAY),
+      safety_status: "elevated",
+      escalation_required: false,
+      non_diagnostic_disclaimer: CHECK_IN_DISCLAIMER,
+      crisis_escalation: null,
+    },
+  ];
+
+  const conversations: AssistantConversation[] = [
+    {
+      id: "cnv_001",
+      title: "Understanding my indicator",
+      status: "active",
+      last_message_at: ago(2 * DAY),
+      turns: [
+        { id: "trn_1", role: "user", text: "What does my moderate indicator mean?", created_at: ago(2 * DAY) },
+        {
+          id: "trn_2",
+          role: "assistant",
+          text:
+            "Albo identified a moderate preventive risk indicator based on the information you shared. The main factors were your weekly activity and fruit and vegetable intake. This is not a diagnosis. A practical next step is adding a little more activity each week and keeping your inputs up to date.",
+          created_at: ago(2 * DAY),
+          response_type: "explanation",
+          disclaimer: ASSISTANT_DISCLAIMER,
+          referenced_assessment_id: "ras_003",
+          rule_model_version: "rules-v1.0.0",
+          suggested_actions: ["view_risk_detail", "view_facilities"],
+        },
+      ],
+    },
+  ];
+
+  const consultations: Consultation[] = [
+    {
+      id: "cns_req_001",
+      provider_name: "Demo Nurse Practitioner",
+      organization_name: "Demo Hills Health Centre",
+      status: "scheduled",
+      purpose: "Preventive lifestyle review",
+      requested_for_at: ahead(4 * DAY),
+      scheduled_at: ahead(5 * DAY),
+      workflow_notice: CONSULTATION_NOTICE,
+      created_at: ago(2 * DAY),
+    },
+  ];
+
+  const assignedCitizens: AssignedCitizen[] = [
+    {
+      assignment_id: "asg_001",
+      citizen_user_id: "usr_synthetic_101",
+      display_name: "Synthetic Person A",
+      administrative_area: "Demo District North",
+      organization_name: "Demo Hills Health Centre",
+      allowed_scopes: ["health_inputs", "risk_assessments", "follow_ups"],
+      starts_at: ago(40 * DAY),
+      ends_at: ahead(50 * DAY),
+      latest_level: "moderate",
+      latest_status: "complete",
+    },
+    {
+      assignment_id: "asg_002",
+      citizen_user_id: "usr_synthetic_102",
+      display_name: "Synthetic Person B",
+      administrative_area: "Demo District East",
+      organization_name: "Demo Hills Health Centre",
+      allowed_scopes: ["health_inputs", "risk_assessments"],
+      starts_at: ago(12 * DAY),
+      ends_at: null,
+      latest_level: null,
+      latest_status: "limited",
+    },
+    {
+      assignment_id: "asg_003",
+      citizen_user_id: "usr_synthetic_103",
+      display_name: "Synthetic Person C",
+      administrative_area: "Demo District North",
+      organization_name: "Demo Hills Health Centre",
+      allowed_scopes: ["risk_assessments", "follow_ups"],
+      starts_at: ago(5 * DAY),
+      ends_at: ahead(85 * DAY),
+      latest_level: "low",
+      latest_status: "complete",
+    },
+  ];
+
+  const followUps: Record<string, ProviderFollowUp[]> = {
+    usr_synthetic_101: [
+      {
+        id: "fup_001",
+        action_type: "lifestyle_counselling",
+        note: "Discussed small weekly activity goals. Citizen will update inputs in two weeks.",
+        referenced_assessment_id: "ras_003",
+        recommended_follow_up_at: ahead(14 * DAY),
+        created_at: ago(6 * DAY),
+        provider_name: "Demo Nurse Practitioner",
+      },
+    ],
+  };
+
+  const devices: DeviceSource[] = [
+    { code: "apple_health", name: "Apple Health", data_types: ["Steps", "Sleep", "Active minutes"], status: "planned" },
+    { code: "google_fit", name: "Google Fit", data_types: ["Steps", "Heart points", "Sleep"], status: "planned" },
+    { code: "fitbit", name: "Fitbit", data_types: ["Steps", "Sleep", "Resting heart rate"], status: "not_available" },
+  ];
+
+  const regional: RegionalIndicator[] = [
+    { area_code: "DD-N", area_name: "Demo District North", elevated_share: 0.18, population_band: "10k–50k", location: { lat: -1.93, lng: 30.06 }, suppressed: false },
+    { area_code: "DD-E", area_name: "Demo District East", elevated_share: 0.27, population_band: "50k–100k", location: { lat: -1.96, lng: 30.13 }, suppressed: false },
+    { area_code: "DD-S", area_name: "Demo District South", elevated_share: 0.12, population_band: "10k–50k", location: { lat: -2.0, lng: 30.07 }, suppressed: false },
+    { area_code: "DD-W", area_name: "Demo District West", elevated_share: null, population_band: "< 1k", location: { lat: -1.95, lng: 29.99 }, suppressed: true },
+  ];
+
   return {
     me,
+    checkIns,
+    conversations,
+    consultations,
+    assignedCitizens,
+    followUps,
+    devices,
+    regional,
     notificationPreferences,
+    dataExports,
+    deletionRequest: deletionRequest as AccountDeletionRequest | null,
     features,
     healthInputs,
     riskAssessments,

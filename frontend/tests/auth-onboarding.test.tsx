@@ -80,6 +80,8 @@ describe("onboarding consent step (FR-002, FR-003)", () => {
   it("preselects nothing and blocks progress until the required item is accepted", async () => {
     vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/onboarding" }));
     const { default: OnboardingPage } = await import("@/app/onboarding/page");
+    const { api } = await import("@/lib/api/client");
+    await api.setFeature("provider_portal", false);
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={qc}>
@@ -100,5 +102,26 @@ describe("onboarding consent step (FR-002, FR-003)", () => {
     expect(next).toBeDisabled();
     fireEvent.click(required);
     expect(next).toBeEnabled();
+  });
+});
+
+describe("data rights and inbox (FR-006, FR-015)", () => {
+  it("prevents duplicate exports and marks all notifications read", async () => {
+    const api = createMockApi(createMockDb(), 0);
+    const first = await api.requestDataExport();
+    expect(first.status).toBe("requested");
+    await expect(api.requestDataExport()).rejects.toMatchObject({ status: 409 });
+
+    await api.markAllNotificationsRead();
+    expect((await api.listNotifications()).every((n) => n.read_at)).toBe(true);
+  });
+
+  it("account deletion starts a 30-day grace period and is idempotent", async () => {
+    const api = createMockApi(createMockDb(), 0);
+    const req = await api.requestAccountDeletion();
+    expect(req.status).toBe("grace_period");
+    const days = (Date.parse(req.grace_period_ends_at) - Date.parse(req.requested_at)) / 86_400_000;
+    expect(Math.round(days)).toBe(30);
+    expect((await api.requestAccountDeletion()).id).toBe(req.id);
   });
 });

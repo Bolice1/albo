@@ -14,6 +14,14 @@ Every significant change to requirements, APIs, database schemas, security/priva
 
 ## [Unreleased — Frontend onboarding track (`frontend/`)]
 
+### 2026-11-27 — All feature modules (gated previews), notification inbox, and data rights
+
+- Added `/notifications` inbox, "mark all read", and a profile menu in the top bar.
+- Added data export and account deletion (30-day grace period, typed confirmation) to Settings (FR-006).
+- Added gated modules behind feature flags (`ADR-019`): wellbeing check-ins with deterministic escalation (`/check-ins`), template AI assistant with crisis screening and refusals (`/assistant`), consultations (`/consultations`), and the provider portal with scope-limited person overview and append-only follow-ups (`/provider`).
+- Added later-phase previews: device connections (`/devices`) and an aggregated regional health map with small-area suppression (`/regional-health`).
+- Added Settings → Feature previews (development only) to switch gated modules on and off.
+
 ### 2026-11-27 — Auth screens, onboarding, notification settings, and brand mark
 
 - Added sign-in, sign-up and password-reset screens behind a mock `AuthAdapter` with non-revealing errors (FR-001, `ADR-018`).
